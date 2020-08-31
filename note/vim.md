@@ -528,8 +528,9 @@
 		实例：ysiw( ds( cs(]
 
 		ctrl+w h 用来把光标切换到目录栏（vscode）
-		ctrl+shift+. 展示大纲，并可以跳转
+		ctrl+; 展示大纲，并可以跳转
 		ctrl+shift+, 切换false true，提高数字，其他用途不清楚
+		ctrl+shift+. 切换false true，降低数字，其他用途不清楚
 		```
 
 - neovim

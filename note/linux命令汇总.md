@@ -19,11 +19,13 @@
 |   who    |   users   |         |               |          |
 |   date   |    cal    |   df    |      du       |    ps    |
 |   top    |   kill    |   ln    |    pstree     |   free   |
-|  mount   | chkconfig |         |               |
+|  mount   | chkconfig | ss -nal |               |          |
 |   rpm    |    yum    |   tar   |      apt      |   make   |
 |   cut    |   sort    |   wc    |      sed      |   awk    |
 |   read   |   test    |  exec   |    source     |   bash   |
 |   echo   |   hash    |         |               |          |
+
+- ss -nal：查看所欲socket监听接口
 
 # 2. 开始
 
@@ -58,12 +60,13 @@
 - whereis 定位命令位置,同时指出帮助文档位置
 - which 定位命令位置
 - file descriptor:文件描述符/文件句柄。linux 中数字代表进程中的某一个流，任何进程最基本的三个流：
+
   - 0 输入流
   - 1 正确的输出流
   - 2 错误的输出流
 
-- `!serv` 执行最近的，以serv开头的，执行过的命令
-- jps ：jdk中的一个可执行程序，查看java进程id
+- `!serv` 执行最近的，以 serv 开头的，执行过的命令
+- jps ：jdk 中的一个可执行程序，查看 java 进程 id
 
 ---
 
