@@ -439,12 +439,12 @@
     ```
     - 顺便把所有块mapred-env.sh,yarn-env.sh也都改了
   - 根据官方修改
-    - core-site.xml：主节点配置信息
+    - core-site.xml：主节点配置文件
       > Localhost改成node0001
-    - hdfs-site.xml：副本数量。伪分布式部署，默认为1
-  - 设置DataNode ：slaves文件
-    > 改为node0001
-  - 进入hdfs-sit.xml配置SecondNameNode
+    - hdfs-site.xml：分布式文件系统配置文件。副本数量，伪分布式部署，默认为1
+    - slave:DataNode从节点列表文件。
+  - 设置DataNode ：slaves文件 , 改为node0001
+  - 进入hdfs-site.xml配置SecondNameNode角色进程
     > 查看默认配置：
     > ![](./image/hadoop-begin-10.jpg)
     ```xml
@@ -466,10 +466,12 @@
           <property>
               <name>fs.defaultFS</name>
               <value>hdfs://node0001:9000</value>
+              <!-- NameNode主节点配置角色进程 -->
           </property>
           <property>
               <name>hadoop.tmp.dir</name>
               <value>/var/learn/hadoop/pseudo</value>
+              <!-- 伪分布式相关文件配置位置 -->
           </property>
       </configuration>
       ```
@@ -481,14 +483,18 @@
       - current
         - fsimage_0000000000000000000  
         - fsimage_0000000000000000000.md5 
-        - seen_txid :集群唯一标识号，format阶段形成，给所有角色共享
-          > 格式化一次就会变一次，但其他角色id不会变。所以不要多次启动
-          > 解决方式：
+        - seen_txid 
         - VERSION
+          > 里面的clusterID<br>
+          > 集群唯一标识号，format阶段形成，给所有角色共享<br>
+          > 格式化一次就会变一次，但其他角色id不会变。所以不要多次启动<br>
+          > 解决方式：手动修改回去。把NameNode改成和DataNode以及SecondNameNode一样，
+          > 或者把所有其他的改成和NameNode一样
   - 启动
     > ![](./image/hadoop-begin-13.jpg)
     > ![](./image/hadoop-begin-14.jpg)
   - 可以在浏览器进入`192.168.187.101:50070`查看负载情况
+    > `ss -nal` 查看socket监听接口
     - Live Nodes指的是DataNode节点
   - NameNode创建路径，再上传文件
     - hdfs dfs 可以查看所有文件管理命令，贴近于linux
@@ -504,18 +510,362 @@
     - 快文件存储在/var/learn/hadoop/data下
       > ![](./image/hadoop-begin-17.jpg)
   - 关闭：stop-dfs.sh
-    
+
+### 2.2.10. 相关思考
+
+- 列出Hadoop集群的Hadoop守护进程和相关的角色
+- 为什么hadoop 的namenode基于内存存储？他的优势和弊端是什么？
+- hadoop namenode 持久化操作的流程
+- 阐述分布式架构计算向数据移动的必要性
+- 熟练完成伪分布式hadoop的安装，测试创建目录、上传、删除文件
+- 测试角色进程版本号不一致现象并给出解决方案。
+
+## 2.3. 分布式集群
+
+### 2.3.1. hadoop1.0集群搭建
+
+| 节点名称 | NN | DN | SN |
+| :--: |:--: | :--: | :--:|
+|node0001|*|||
+|node0002||*| *|
+|node0003||*||
+|node0004||*||
+
+
+- 搭建基础linux集群
+  > 安全机制 hosts 防火墙等设置
+- 设置成相同时间：`date -s "2020-09-01 15:32:00"`
+- 免密钥操作
+  - scp .ssh/authorized_keys root@node0002:.ssh/node0001.pub
+    > 该操作是对免密码登录服务器进行记录。因为可能不止只有一个服务器可以免密码，所以不能直接覆盖authorized_keys
+  - cat .ssh/node0001.pub >> .ssh/authorized_keys
+- 修改core-site.xml
+  ```xml
+  <configuration>
+      <property>
+          <name>fs.defaultFS</name>
+          <value>hdfs://node0001:9000</value>
+          <!-- 全分布式NameNode主节点角色进程信息 -->
+      </property>
+      <property>
+          <name>hadoop.tmp.dir</name>
+          <value>/var/learn/hadoop/full</value>
+          <!-- 全分布式部署相关文件存储位置 -->
+      </property>
+  </configuration>
+  ```
+- 修改hdfs-site.xml
+  ```xml
+    <configuration>
+      <property>
+          <name>dfs.replication</name>
+          <value>2</value>
+          <!-- 因为只有三个从节点，所以为了查看副本放置策略，这里设置成两个 -->
+      </property>
+      <property>
+          <name>dfs.namenode.secondary.http-address</name>
+          <value>node0002:50090</value>
+          <!-- SecondNameNode单独配置到另一台上 -->
+          <!-- node0002即是SecondeNameNode，也是从节点 -->
+      </property>
+    </configuration>
+  ```
+- 修改slaves
+  ```
+  node0002
+  node0003
+  node0004
+  ```
+- 将hadoop 发送(`scp`)到其他三个节点上
+- 将/etc/profile分发到其他三个节点上（也可以自己手动改），再souce重新加载
+- `hdfs namenode -format` 格式化NameNode节点
+- 启动`start-dfs.sh`
+  > ![](./image/hadoop-begin-18.jpg)
+  > 启动提示，启动NameNode时，会自动启动DataNode和SecondNameNode。以及日志文件位置。出现问题后，就去查日志
+  > ![](./image/hadoop-begin-19.jpg)
+  > 角色进程
+- 创建hdfs的文件夹`hdfs dfs mkdir -p /user/root`
+- 设置测试文件`for i in `sed 100000`;do echo "hello hadoop $i" >> test.txt;done`
+- 以指定块大小发放文件 `hdfs dfs -D dfs.blocksize=1048576 -put test.txt`
+  > 属性名可以查看官方文档中的hdfs-defult.xml<br>
+  > 目的路径不写的话默认放到/user/root路径(如果不提前创建的话会报错)<br>
+- 查看块分布
+  > ![](./image/hadoop-begin-20.jpg)
+  > 块分布，块1放在了node0003,node0004。块2放在了node0003,node0004（可以能node0002，node0004等，与是否为同一个文件无关）。
+- `vi + /var/learn/hadoop/full/dfs/data/current/BP-1207338582-192.168.187.101-1599033662736/current/finalized/subdir0/subdir0/blk_1073741825`
+  > 查看块内容，可以发现按字节切割，会把行拆开
+  > ![](./image/hadoop-begin-21.jpg)
+  > **以后讲内部代码时会讲解决办法，解决办法在当时说**
+
+### 2.3.2. hadoop2.0 及 导入
+
+- Hadoop 2.0产生背景
+  - Hadoop 1.0中HDFS和MapReduce在高可用、扩展性等方面存在问题
+  - HDFS存在的问题(2个)
+    - NameNode单点故障，难以应用于在线场景。解决方式：High Availability(高可用)
+      > 主备模型。<br>
+      > 主备不同时工作原因：面临问题：**split brain(脑裂)**
+    - NameNode压力过大，且内存受限，影扩展性。解决方式：Federation(联邦)
+      > NameNode内存优先，无法充分使用所有DataNode服务器<br>
+      > 联邦： 多个NameNode共同提供服务
+  - MapReduce存在的问题响系统
+    - JobTracker访问压力大，影响系统扩展性
+    - 难以支持除MapReduce之外的计算框架，比如Spark、Storm等
+
+- Hadoop  1.x与Hadoop  2.x
+  > ![](./image/hadoop-begin-22.jpg)
+
+- Hadoop 2.x由HDFS、MapReduce和YARN三个分支构成；
+  - HDFS：NN Federation（联邦）、HA；
+    - 2.X:只支持2个节点HA，3.0实现了一主多从，官方推荐一主两备
+  - MapReduce：运行在YARN上的MR；
+    - 离线计算，基于磁盘I/O计算
+  - YARN：资源管理系统
+
+- HDFS  2.x
+  - 解决HDFS 1.0中单点故障和内存受限问题。
+  - 解决单点故障
+    - HDFS HA：通过主备NameNode解决
+    - 如果主NameNode发生故障，则切换到备NameNode上
+  - 解决内存受限问题
+    - HDFS Federation(联邦)
+    - 水平扩展，支持多个NameNode；
+    - （2）每个NameNode分管一部分目录；
+    - （1）所有NameNode共享所有DataNode存储资源
+  - 2.x仅是架构上发生了变化，使用方式不变
+  - 对HDFS使用者透明
+  - HDFS 1.x中的命令和API仍可以使用
+
+### 2.3.3. 高可用(ZK+JN)
+
+> 使用，主备模型。主要看主备间的数据同步问题
+
+- 主备注意点：
+  - hadoop2.0中SecondNameNode就用不上了
+  - 备NameNode(NN Standby) 用来做edits和fsimage的合并
+
+
+- HDFS  2.0  HA
+  > ppt总结
+  - 主备NameNode
+  - 解决单点故障（属性，位置）
+    - 主NameNode对外提供服务，备NameNode同步主NameNode元数据，以待切换
+    - 所有DataNode同时向两个NameNode汇报数据块信息（位置）
+    - JN集群（属性）
+    - standby：备，完成了edits.log文件的合并产生新的image，推送回ANN
+  - 两种切换选择
+    - 手动切换：通过命令实现主备之间的切换，可以用HDFS升级等场合
+    - 自动切换：基于Zookeeper实现
+  - 基于Zookeeper自动切换方案
+  - ZooKeeper Failover Controller：监控NameNode健康状态，
+  - 并向Zookeeper注册NameNode
+  - NameNode挂掉后，ZKFC为NameNode竞争锁，获得ZKFC 锁的NameNode变为active
+
+- hadoop2.0高可用架构模型图
+  > ![](./image/hadoop-begin-23.jpg)
+  > ![](./image/hadoop-begin-24.jpg)
+  - 作用:
+    - 上半部分完成主备节点间的自动切换
+      - 通过zookeeper(分布式协调系统)
+    - 下部分做到了数据同步
+  - 同lvs，两个主备NN必须时刻保持数据同步
+    - 数据类型：
+      - 动态数据：块位置信息
+        > DN时刻向NN主动汇报的信息，不会持久化到文件当中
+      - 静态数据：块偏移量，大小，权限
+    - 数据同步方式：
+        - 动态数据：单一汇报变成多汇报
+        - 静态数据：
+          - 早期：nfs:network filesystem(网络同步服务器)，将edits文件放到另一台服务器上，主备公用。
+            > 缺陷：nfs依旧有单点故障问题
+          - 现在使用：**JournalNode(日志节点)集群**。多台JN共同保存edits日志数据，JN间保持同步。主NN往JN集群中写，备NN从JN中读
+            - JournalNode数量必须为奇数且大于等于3
+            - 过半机制：最多容忍一半及以下台服务器出现故障。原因之后再讲
+  - 主备切换：
+    - 手动切换：
+      - 不使用zookeeper集群
+      - 数据同步会自动进行，但当主服务器挂掉，必须手动切换，或通过脚本实现自动切换
+    - 自动切换：
+      > zookeeper:分布式协调系统。底层java，开源。
+      > 底层基于zab协议。来源于1990年paxos论文：基于消息一致性算法的论文
+      - 使用zookeeper集群。自动完成主备节点的切换
+      - zookeeper基本原理:
+        > 一主多从架构<br>
+        > 看文档（高可用配置那里）。<br>
+        > 四大机制：register(注册)，watchEvent(监听事件),callback(客户端函数的回调,客户端是zkfc的函数),
+        - zookeeper在每个NN上开启一个FailoverController(故障转移控制,缩写：zkfc)进程。
+          > [组件详解](https://blog.csdn.net/bocai8058/article/details/78870451)
+          - elector组件:每个FailoverController进程中有elector(选举)进程，都向zookeeper集群申请作为主节点（register，注册）。最先进行注册的节点会作为主节点（注册顺序可以通过代码控制）。
+          - HealthMonitor:健康检查组件，检查NN健康状态
+        - zookeeper中为主NN创建一个节点路径`znode`，该路径之下，会有节点的注册信息
+        - 备NN会委托zookeeper检查zookeeper观察主NN所发生的事件
+        - 如果NN出现故障，zookeeper告知备NN
+        - 备NN会调用回调函数，强制让主NN变为Standby状态，再自行将Standby转为active状态
+          > 也就是说zookeeper只起到消息通知作用<br>
+          > 就算主NN故障了，也不能直接把备NN提升为active，否则会出现 split brain问题
+
+### 2.3.4. 联邦
+
+> 搭建不作为重点，普通企业NameNode很少需要搭建联邦
+
+- 目的：
+  - 通过多个namenode/namespace把元数据的存储和管理分散到多个节点中，使到namenode/namespace可以通过增加机器来进行水平扩展。
+  - 能把单个namenode的负载分散到多个节点中，在HDFS数据规模较大的时候不会也降低HDFS的性能。可以通过多个namespace来隔离不同类型的应用，把不同类型应用的HDFS元数据的存储和管理分派到不同的namenode中。
+
+**※待做**
+
+### 2.3.5. 高可用集群搭建
+
+#### 2.3.5.1. 搭建目标
+
+> 多看官方文档
+
+|节点名称|NN-1|NN-2|DN|ZK|ZKFC|JN|
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+|node0001|*|||| * | *|
+|node0002||*| *| *| *| * |
+|node0003|||*| *|  | *　|
+|node0004|||*| *| ||
+
+> 其中zookeeper的搭建和别的集群没有任何关系，搭建在哪里都行（可以查看上面那个架构图）。但ZKFC必须要搭建在两个主备NN上
+
+> journalnode需要在hadoop配置文件中指明，位置随便
+
+> journalnode和zookeeper要先于DN和NN启动
+
+#### 2.3.5.2. 搭建过程
+
+> 推荐仔细看看文档
+
+**在基础集群上进行搭建**
+
+- node0001和node0002间要进行主备切换，所以互相要可以免密钥登录。进行免密钥设置
+- hdfs-site.xml
+  ```xml
+  <configuration>
+    <property>
+      <name>dfs.replication</name>
+      <value>2</value>
+    </property>
+    <property>
+      <name>dfs.nameservices</name>
+      <!-- namenode services缩写 -->
+      <value>mycluster</value>
+      <!-- 一对主备NN的逻辑名称 -->
+    </property>
+    <property>
+      <name>dfs.ha.namenodes.mycluster</name>
+      <value>nn1,nn2</value>
+      <!-- mycluster对应的两个NN的逻辑名称 -->
+    </property>
+     <property>
+      <name>dfs.namenode.rpc-address.mycluster.nn1</name>
+      <!-- rpc:remote procedure call.类似java中的rmi -->
+      <value>node0001:8020</value>
+      <!-- nn1所在ip:port -->
+    </property>
+    <property>
+      <name>dfs.namenode.rpc-address.mycluster.nn2</name>
+      <value>node0002:8020</value>
+      <!-- nn2所在ip:port -->
+    </property>
+    <property>
+      <name>dfs.namenode.http-address.mycluster.nn1</name>
+      <value>node0001:50070</value>
+      <!-- nn1对应图形管理界面ip:port -->
+    </property>
+    <property>
+      <name>dfs.namenode.http-address.mycluster.nn2</name>
+      <value>node0002:50070</value>
+      <!-- nn2对应图形管理界面ip:port -->
+    </property>
+    <property>
+      <name>dfs.namenode.shared.edits.dir</name>   
+      <value>qjournal://node0001:8485;node0002:8485;node0003:8485/mycluster</value>
+      <!-- mycluster主备NN 使用的 JN集群对应服务器 -->
+    </property>
+    <property>
+      <name>dfs.client.failover.proxy.provider.mycluster</name>
+      <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+      <!-- 故障转移的代理类,这里直接抄上去就行了 -->
+    </property>
+
+    <!-- 下面两个是为了避免当主NN发生故障可能产生的splite-brain情况 -->
+    <!-- 通过ssh的方式，也可以配置shell的方式 -->
+    <property>
+      <name>dfs.ha.fencing.methods</name>
+      <value>sshfence</value>
+      <!-- ssh远程登录进行隔离。standby登录active -->
+    </property>
+    <property>
+      <name>dfs.ha.fencing.ssh.private-key-files</name>
+      <value>/root/.ssh/id_dsa</value>
+      <!-- 私钥文件位置。私钥作用？？ -->
+    </property>
+
+    <property>
+      <name>dfs.journalnode.edits.dir</name>
+      <value>/var/learn/hadoop/ha/journalnode</value>
+      <!-- journalnode存储的绝对路径位置，JN间会同步，都放置在同一个位置 -->
+    </property> 
+  </configuration>
+  ```
+- core-site.xml
+  ```xml
+  <configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://mycluster</value>
+    </property>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/var/learn/hadoop/ha</value>
+    </property>
+  </configuration>
+  ```
+
+- (现在整个系统配置好了高可用，已经可以跑起来了，只不过需要手动切换主备。zookeeper是游离于整个系统之外，他的启动和关闭和整个系统没关系，仅仅根据需要进行配置)
+  - 如果现在想启动，跳过zookeeper配置直接到启动即可
+
+- 添加zookeeper
+  - hdfs-site.xml：
+    ```xml
+    <!-- 添加 -->
+    <property>
+      <name>dfs.ha.automatic-failover.enabled</name>
+      <value>true</value>
+      <!-- 开启自动故障转移 -->
+    </property>
+    ```
+  - core-site.xml
+    ```xml
+    <property>
+      <name>ha.zookeeper.quorum</name>
+      <value>node0002:2181,node0003:2181,node0004:2181</value>
+    </property>
+    ```
+
+- 分发配置文件到其他节点
+- zookeeper解压到 /opt/learn/
+- 修改zookeeper配置文件
+  - mv zoo_sample.cfg zoo.cfg
+  - vi zoo.cfg
+  - 修改：`dataDir=/var/learn/zk`
+  - 结尾添加：
+    ```
+
+    ```
 
 
 
-## 2.3. 分布式计算框架 MR
+## 2.4. 分布式计算框架 MR
 
 > 计算向数据移动
 
-## 2.4. 体系结构
+## 2.5. 体系结构
 
-## 2.5. 安装
+## 2.6. 安装
 
-## 2.6. shell
+## 2.7. shell
 
-## 2.7. API
+## 2.8. API
