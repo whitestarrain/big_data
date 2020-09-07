@@ -979,7 +979,7 @@
     - 同时也避免的全部复制，影响子进程的创建速度和内存消耗
     - 通过`export v1=value`定义
     - 其他：
-      - bash file \$ 后台运行
+      - `bash file $` 后台运行
       - sleep 20 ：睡眠 20 秒
       - linux 中的 fork()函数
 

@@ -536,6 +536,7 @@
   > 安全机制 hosts 防火墙等设置
 - 设置成相同时间：`date -s "2020-09-01 15:32:00"`
 - 免密钥操作
+  > NN要开启其他节点的角色进程，需要权限
   - scp .ssh/authorized_keys root@node0002:.ssh/node0001.pub
     > 该操作是对免密码登录服务器进行记录。因为可能不止只有一个服务器可以免密码，所以不能直接覆盖authorized_keys
   - cat .ssh/node0001.pub >> .ssh/authorized_keys
@@ -729,13 +730,15 @@
 
 > 其中zookeeper的搭建和别的集群没有任何关系，搭建在哪里都行（可以查看上面那个架构图）。但ZKFC必须要搭建在两个主备NN上
 
+> ZKFC是NN中的进程，通过hdfs命令格式化和开启
+
 > journalnode需要在hadoop配置文件中指明，位置随便
 
 > journalnode和zookeeper要先于DN和NN启动
 
 #### 2.3.5.2. 搭建过程
 
-> 推荐仔细看看文档
+> 推荐仔细看看文档，都有
 
 **在基础集群上进行搭建**
 
@@ -823,38 +826,108 @@
     </property>
   </configuration>
   ```
+- slave:照旧
 
 - (现在整个系统配置好了高可用，已经可以跑起来了，只不过需要手动切换主备。zookeeper是游离于整个系统之外，他的启动和关闭和整个系统没关系，仅仅根据需要进行配置)
   - 如果现在想启动，跳过zookeeper配置直接到启动即可
 
-- 添加zookeeper
-  - hdfs-site.xml：
-    ```xml
-    <!-- 添加 -->
-    <property>
-      <name>dfs.ha.automatic-failover.enabled</name>
-      <value>true</value>
-      <!-- 开启自动故障转移 -->
-    </property>
+- zookeeper配置
+  - 添加zookeeper
+    - hdfs-site.xml：
+      ```xml
+      <!-- 添加 -->
+      <property>
+        <name>dfs.ha.automatic-failover.enabled</name>
+        <value>true</value>
+        <!-- 开启自动故障转移 -->
+      </property>
+      ```
+    - core-site.xml
+      ```xml
+      <property>
+        <name>ha.zookeeper.quorum</name>
+        <value>node0002:2181,node0003:2181,node0004:2181</value>
+        <!-- 指明zookeeper集群服务器位置 -->
+      </property>
+      ```
+  - 分发hadoop配置文件到其他节点
+  - zookeeper解压到 /opt/learn/
+  - 修改zookeeper配置文件
+    - mv zoo_sample.cfg zoo.cfg
+    - vi zoo.cfg
+    - 修改：`dataDir=/var/learn/zk`
+    - 结尾添加：
+      > zookeeper集群在搭建一开始就需要提供集群服务器的信息，并为服务器编号serverid<br>
+      > zookeeper是一主多从架构，zookeeper的编号与选举机制有关。同时启动的情况下，最大编号服务器会作为主服务器（其他因素之后讲）
+      ```
+      <!-- 2888：主从间通讯接口 -->
+      <!-- 3888：主挂断后，选举机制采用的通讯端口 -->
+      server.1=node0002:2888:3888
+      server.2=node0003:2888:3888
+      server.3=node0004:2888:3888
+      ```
+  - 讲zookeeper分发到其他节点/opt/learn
+  - 创建编号目录
+    > 每台服务器在启动时会读取该文件获得自己编号
+    - node0002:`mkdir -p /var/learn/zk` `echo 2 > /var/learn/zk/myid`
+    - node0003:`mkdir -p /var/learn/zk` `echo 3 > /var/learn/zk/myid`
+    - node0004:`mkdir -p /var/learn/zk` `echo 4 > /var/learn/zk/myid`
+  - zookeeper环境变量配置
+    ```shell
+    export ZOOKEEPER_HOME=/opt/learn/zookeeper-3.4.6
+    PATH=$PATH:$ZOOKEEPER_HOME/bin
     ```
-  - core-site.xml
-    ```xml
-    <property>
-      <name>ha.zookeeper.quorum</name>
-      <value>node0002:2181,node0003:2181,node0004:2181</value>
-    </property>
-    ```
+  - 分发profile
+  - source /etc/profile 
+  - 每台都运行`zkServer.sh start`来启动
+    > 如果一台一台启动，第一台启动时，zookeeper不会运行。第二台启动时，两台服务器会同时开始运行(过半原则)，同时两台中较大id的服务器会作为leader，其他会作为follower
+    - jps 查看
+      - QuorumPeerMain进程
+    - zkServer.sh status 查看
+  - ZKFC进程在主备NN上会随着hadoop启动而启动（也可以手动单独启动）(查文档)
 
-- 分发配置文件到其他节点
-- zookeeper解压到 /opt/learn/
-- 修改zookeeper配置文件
-  - mv zoo_sample.cfg zoo.cfg
-  - vi zoo.cfg
-  - 修改：`dataDir=/var/learn/zk`
-  - 结尾添加：
-    ```
+- 启动
+  - zookeeper已经启动了
+  - node0001启动journalnode:`hadoop-daemon.sh start journalnode`
+  - node0002启动journalnode:`hadoop-daemon.sh start journalnode`
+  - node0003启动journalnode:`hadoop-daemon.sh start journalnode`
+  - NN-1(node0001)格式化：`hdfs namenode -format`
+  - 启动NN-1角色进程 `hadoop-daemon.sh start namenode`
+    > `start-dfs.sh`是开启所有服务器的角色进程，包括ZKFC
+    > 该操作是为了NN-2和NN-1间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1作为S,NN-2作为C）
+  - NN-2同步NN-1的信息：`hdfs namenode -bootstrapStandby`
+    > NN-2不要格式化，否则两节点id不一致，无法构成一个集群
+  - node0001:初始化zkfc。hdfs zkfc -formatZK
+  - zkCli.sh，进入zookeeper客户端交互（哪个ZK节点都行）
+    - help 查看命令列表
+    - ls / 查看根目录
+    - ls /hadoop-ha 
+  - node0001:`start-dfs.sh`启动集群
+    > 其他可以免密登录的节点来启动也行
+    > NN-1已经启动，不会重复启动
+  - zkCli.sh，进入zookeeper客户端交互
+    - ls / 查看根目录
+    - ls /hadoop-ha 
+    - get /hadoop-ha/mycluster/ActiveBreadCrumd
+    - get /hadoop-ha/mycluster/ActiveStandyElectorLock
+      > 只会处于active节点(node0001)的信息会在zookeeper完成注册
+  - 浏览器进入node0001:50070 node0002:50070
 
-    ```
+- 测试
+  - 1
+    - node0006:`hadoop-daemon.sh stop namenode`
+    - 浏览器进入node0002:50070
+      > 会发现自动故障转移切换
+    - zkCli.sh，进入zookeeper客户端交互
+      - get /hadoop-ha/mycluster/ActiveBreadCrumd
+      - get /hadoop-ha/mycluster/ActiveStandyElectorLock
+        > 只会处于active节点(node0002)的信息会在zookeeper完成注册
+    - node0006重新启动角色进程:`hadoop-daemon.sh start namenode`
+      > node0006会作为备
+  - 2
+    - node0007:`hadoop-daemon.sh stop zkfc`
+    - node0007变为备
+    - node0006变为主
 
 
 
