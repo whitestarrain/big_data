@@ -883,9 +883,9 @@
   - 讲 zookeeper 分发到其他节点/opt/learn
   - 创建编号目录
     > 每台服务器在启动时会读取该文件获得自己编号
-    - node0002:`mkdir -p /var/learn/zk` `echo 2 > /var/learn/zk/myid`
-    - node0003:`mkdir -p /var/learn/zk` `echo 3 > /var/learn/zk/myid`
-    - node0004:`mkdir -p /var/learn/zk` `echo 4 > /var/learn/zk/myid`
+    - node0002:`mkdir -p /var/learn/zk` `echo 1 > /var/learn/zk/myid`
+    - node0003:`mkdir -p /var/learn/zk` `echo 2 > /var/learn/zk/myid`
+    - node0004:`mkdir -p /var/learn/zk` `echo 3 > /var/learn/zk/myid`
   - zookeeper 环境变量配置
     ```shell
     export ZOOKEEPER_HOME=/opt/learn/zookeeper-3.4.6
@@ -900,26 +900,32 @@
     - zkServer.sh status 查看
   - ZKFC 进程在主备 NN 上会随着 hadoop 启动而启动（也可以手动单独启动）(查文档)
 
-- 启动
-
+- 首次启动
+  > 其实也可以将启动和结束写成一个脚本。之后有时间写下
   - zookeeper 已经启动了
-  - node0001 启动 journalnode:`hadoop-daemon.sh start journalnode`
-  - node0002 启动 journalnode:`hadoop-daemon.sh start journalnode`
-  - node0003 启动 journalnode:`hadoop-daemon.sh start journalnode`
+  - journalnode启动
+    > 目的：提前启动journalnode，给NN2同步NN1的格式化信息（如果NN2额外格式化，id会有区别）<br>
+    > 过程：启动journalnode，启动主namenode(不启动hadoop),格式化主namenode(edits放入journalnode)，备NN通过journalnode同步主NN的格式化信息<br>
+    > 所以再次启动时，就不用提前启动journalnode了。start-dfs.sh会自动启动journalnode
+    - node0001 启动 journalnode:`hadoop-daemon.sh start journalnode`
+    - node0002 启动 journalnode:`hadoop-daemon.sh start journalnode`
+    - node0003 启动 journalnode:`hadoop-daemon.sh start journalnode`
   - NN-1(node0001)格式化：`hdfs namenode -format`
+    > 格式化namenode时，也会将journalnode格式化
   - 启动 NN-1 角色进程 `hadoop-daemon.sh start namenode`
     > `start-dfs.sh`是开启所有服务器的角色进程，包括 ZKFC
     > 该操作是为了 NN-2 和 NN-1 间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1 作为 S,NN-2 作为 C）
   - NN-2 同步 NN-1 的信息：`hdfs namenode -bootstrapStandby`
     > NN-2 不要格式化，否则两节点 id 不一致，无法构成一个集群
-  - node0001:初始化 zkfc。hdfs zkfc -formatZK
+  - node0001: 在zookeeper集群中创建目录。hdfs zkfc -formatZK
   - zkCli.sh，进入 zookeeper 客户端交互（哪个 ZK 节点都行）
     - help 查看命令列表
     - ls / 查看根目录
     - ls /hadoop-ha
   - node0001:`start-dfs.sh`启动集群
-    > 其他可以免密登录的节点来启动也行
-    > NN-1 已经启动，不会重复启动
+    > 其他可以免密登录的节点来启动也行<br>
+    > NN-1 已经启动，不会重复启动<br>
+    > zkfc会在此时启动
   - zkCli.sh，进入 zookeeper 客户端交互
     - ls / 查看根目录
     - ls /hadoop-ha
@@ -943,6 +949,14 @@
     - node0007:`hadoop-daemon.sh stop zkfc`
     - node0007 变为备
     - node0006 变为主
+
+- 关闭
+  - 关闭除zookeeper外的所有进程：`stop-dfs.sh`
+  - 关闭zookeeper:三个zookeeper服务器执行`zkServer.sh stop`
+
+- 再次启动：
+  - 启动三个zookeeper服务端进程
+  - start-dfs.sh
 
 ## 2.4. 分布式计算框架 MR
 
