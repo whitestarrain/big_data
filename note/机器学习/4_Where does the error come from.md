@@ -53,8 +53,9 @@ bias：偏差；variance：方差  -> 实际上对应着物理实验中系统误
 * 多次实验得到的$f^*$的期望$\overline{f}$与靶心$\widehat{f}$之间的bias——$E(f^*)$，可以形象地理解为瞄准的位置和靶心的距离的偏差
 * 多次实验的$f^*$之间的variance——$Var(f^*)$，可以形象地理解为多次打在靶上的点的集中程度
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/bias-variance.png" /></center>
-说到这里，可能会产生一个疑惑：我们之前不就只做了一次实验吗？我们就collect了十笔data，然后training出来了一个$f^*$，然后就结束了。那怎么找很多个$f^*$呢？怎么知道它的bias和variance有多大呢？
+![](./img/bias-variance.png)
+
+说到这里，可能会产生一个疑惑：我们之前不就只做了一次实验吗？我们就collect了十笔data，然后training出来了一个$f^*$ ，然后就结束了。那怎么找很多个$f^*$呢？怎么知道它的bias和variance有多大呢？
 
 ##### $f^*$取决于model的复杂程度以及data的数量
 

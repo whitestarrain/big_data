@@ -1,8 +1,10 @@
-# Introduction
+> 具体分类看维基百科
+
+# 1. Introduction
 
 > define a set of function(model) -> goodness of function -> pick the best function 
 
-### Learning Map
+# 2. Learning Map
 
 下图中，同样的颜色指的是同一个类型的事情
 
@@ -14,35 +16,52 @@
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/learningMap.png" alt="learning map" width="60%;" /></center>
 
-#### Supervised Learning(监督学习)
+## 2.1. Supervised Learning(监督学习)
 
 supervised learning 需要大量的training data，这些training data告诉我们说，一个我们要找的function，它的input和output之间有什么样的关系
 
+根据Loss的值来判断function的优劣
+
 而这种function的output，通常被叫做label(标签)，也就是说，我们要使用supervised learning这样一种技术，我们需要告诉机器，function的input和output分别是什么，而这种output通常是通过人工的方式标注出来的，因此称为人工标注的label，它的缺点是需要大量的人工effort
 
-##### Regression(回归)
+
+### 2.1.1. Regression(回归)
 
 regression是machine learning的一个task，特点是==通过regression找到的function，它的输出是一个scalar数值==
 
 比如PM2.5的预测，给machine的training data是过去的PM2.5资料，而输出的是对未来PM2.5的预测**数值**，这就是一个典型的regression的问题
 
-##### Classification(分类)
+### 2.1.2. Classification(分类)
+
+#### 2.1.2.1. 种类
 
 regression和classification的区别是，我们要机器输出的东西的类型是不一样的，在regression里机器输出的是scalar，而classification又分为两类：
 
-###### Binary Classification(二元分类)
+##### 2.1.2.1.1. Binary Classification(二元分类)
 
 在binary classification里，我们要机器输出的是yes or no，是或否
 
 比如G-mail的spam filtering(垃圾邮件过滤器)，输入是邮件，输出是该邮件是否是垃圾邮件
 
-###### Multi-class classification(多元分类)
+##### 2.1.2.1.2. Multi-class classification(多元分类)
 
 在multi-class classification里，机器要做的是选择题，等于给他数个选项，每一个选项就是一个类别，它要从数个类别里面选择正确的类别
 
 比如document classification(新闻文章分类)，输入是一则新闻，输出是这个新闻属于哪一个类别(选项)。
 
-##### model(function set) 选择模型
+又比如根据图片返回事物名称
+
+#### 2.1.2.2. 原理
+
+##### 2.1.2.2.1. RNN：递归神经网络
+
+##### 2.1.2.2.2. CNN：卷积神经网络
+
+### 2.1.3. Generation (生成)
+
+比如语言翻译，产生随机漫画头像等
+
+### 2.1.4. model(function set) 选择模型
 
 在解任务的过程中，第一步是要选一个function的set，选不同的function set，会得到不同的结果；而选不同的function set就是选不同的model，model又分为很多种：
 
@@ -60,7 +79,7 @@ regression和classification的区别是，我们要机器输出的东西的类�
 
     * **K-NN**
 
-#### Semi-supervised Learning(半监督学习)
+## 2.2. Semi-supervised Learning(半监督学习)
 
 举例：如果想要做一个区分猫和狗的function
 
@@ -70,7 +89,7 @@ regression和classification的区别是，我们要机器输出的东西的类�
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/semi-supervised-Learning.png" alt="semi-supervised" width="60%;" /></center>
 
-#### Transfer Learning(迁移学习)
+## 2.3. Transfer Learning(迁移学习)
 
 假设一样我们要做猫和狗的分类问题
 
@@ -80,7 +99,7 @@ Transfer Learning要解决的问题是，这一堆不相干的data可以对结�
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/transfer-Learning.png" alt="transfer" width="60%;" /></center>
 
-#### Unsupervised Learning(无监督学习)
+## 2.4. Unsupervised Learning(无监督学习)
 
 区别于supervised learning，unsupervised learning希望机器学到无师自通，在完全没有任何label的情况下，机器到底能学到什么样的知识
 
@@ -92,7 +111,7 @@ Transfer Learning要解决的问题是，这一堆不相干的data可以对结�
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/unsupervised-Learning.png" width="60%;" /></center>
 
-#### Structured Learning(结构化学习)
+## 2.5. Structured Learning(结构化学习)
 
 在structured Learning里，我们要机器输出的是，一个有结构性的东西
 
@@ -106,7 +125,7 @@ Transfer Learning要解决的问题是，这一堆不相干的data可以对结�
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/structured-Learning.png" alt="structured" width="60%;" /></center>
 
-#### Reinforcement Learning(强化学习)
+## 2.6. Reinforcement Learning(强化学习)
 
 **Supervised Learning**：我们会告诉机器正确的答案是什么 ，其特点是**Learning from teacher**
 
@@ -121,3 +140,13 @@ Transfer Learning要解决的问题是，这一堆不相干的data可以对结�
 再拿下棋这件事举例，supervised Learning是说看到眼前这个棋盘，告诉机器下一步要走什么位置；而reinforcement Learning是说让机器和对手互弈，下了好几手之后赢了，机器就知道这一局棋下的不错，但是到底哪一步是赢的关键，机器是不知道的，他只知道自己是赢了还是输了
 
 其实Alpha Go是用supervised Learning+reinforcement Learning的方式去学习的，机器先是从棋谱学习，有棋谱就可以做supervised的学习；之后再做reinforcement Learning，机器的对手是另外一台机器，Alpha Go就是和自己下棋，然后不断的进步
+
+## Meta Learning(元学习)
+
+通过机器学习，得到一个函数f1，通过f1可以得到用于使用的的函数f2
+
+即学习机器如何学习
+
+## life-long learning (终身学习)
+
+即不断学习多种任务。比如数字识别，动物识别，音乐辨别等。成为一个全方面的function

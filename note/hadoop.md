@@ -593,7 +593,7 @@
   > ![](./image/hadoop-begin-19.jpg)
   > 角色进程
 - 创建 hdfs 的文件夹`hdfs dfs mkdir -p /user/root`
-- 设置测试文件`for i in `sed 100000`;do echo "hello hadoop $i" >> test.txt;done`
+- 设置测试文件`for i in $(seq 100000);do echo "hello hadoop $i" >> test.txt;done`
 - 以指定块大小发放文件 `hdfs dfs -D dfs.blocksize=1048576 -put test.txt`
   > 属性名可以查看官方文档中的 hdfs-defult.xml<br>
   > 目的路径不写的话默认放到/user/root 路径(如果不提前创建的话会报错)<br>

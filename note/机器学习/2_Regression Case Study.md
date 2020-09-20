@@ -160,7 +160,7 @@ $$w^*={arg}\ \underset{w}{min} L(w) $$ 我们的目标就是找到这个使Loss�
     $$
     此时$w^i$对应的斜率为0，我们找到了一个极小值local minima，这就出现了一个问题，当微分为0的时候，参数就会一直卡在这个点上没有办法再更新了，因此通过gradient descent找出来的solution其实并不是最佳解global minima
 
-    但幸运的是，在linear regression上，是没有local minima的，因此可以使用这个方法
+    但幸运的是，在linear regression上，是没有local minima的，因此可以使用这个方法(即只有一个斜率为0的点)
 
     <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gradient-descent.png" alt="gradient-descent" style="width:60%;" /></center>
 
@@ -269,12 +269,14 @@ $$
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/hidden-factors.png" alt="hidden-factors" style="width:60%;" /></center>
 因此我们重新设计model：
+
 $$
 if \ \ x_s=Pidgey: \ \ \ \ \ \ \ y=b_1+w_1\cdot x_{cp} \\
 if \ \ x_s=Weedle: \ \ \ \ \ \ y=b_2+w_2\cdot x_{cp} \\
 if \ \ x_s=Caterpie: \ \ \ \ y=b_3+w_3\cdot x_{cp} \\
 if \ \ x_s=Eevee: \ \ \ \ \ \ \ \ \ y=b_4+w_4\cdot x_{cp} 
 $$
+
 也就是根据不同的物种，设计不同的linear model(这里$x_s=species \ of \ x$)，那如何将上面的四个if语句合并成一个linear model呢？
 
 这里引入$δ(条件表达式)$的概念，当条件表达式为true，则δ为1；当条件表达式为false，则δ为0，因此可以通过下图的方式，将4个if语句转化成同一个linear model
@@ -312,6 +314,7 @@ $$
 如果我们有一个比较平滑的function，由于输出对输入是不敏感的，测试的时候，一些noises噪声对这个平滑的function的影响就会比较小，而给我们一个比较好的结果
 
 <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/regularization.png" alt="regularization" style="width:60%;" /></center>
+
 **注：这里的λ需要我们手动去调整以取得最好的值**
 
 λ值越大代表考虑smooth的那个regularization那一项的影响力越大，我们找到的function就越平滑
