@@ -186,10 +186,10 @@
   - Block 可以设置副本数，副本无序分散在不同节点中
     > 切出的块进行复制，散布在不同节点上，是为了数据安全
     - 副本数不要超过节点数量，没有意义
-  - 文件上传可以设置 Block 大小和副本数（资源不够开辟的进程）
+  - 文件上传可以设置 Block 大小和副本数
     - Block 大小默认 128MB，最小 1MB。可以自行设置
     - 副本数默认 3 个。可以自行设置
-      > 比如有多个进程需要读取数据块，可以把副本数设置多些，将进程分散到不同服务器，避免造成拥堵现象
+      > 比如有多个进程需要读取同一个数据块，可以把副本数设置多些，将进程分散到不同服务器，避免造成拥堵现象
   - 已上传的文件 Block 副本数可以调整，**大小不变**
   - 只支持一次写入多次读取，同一时刻只有一个写入者
   - 可以 append 追加数据
@@ -215,12 +215,14 @@
     - DataNode 与 NameNode 保持心跳，提交 Block 列表
       > DataNode 向 NameNode 主动提交 Block 列表
   - 客户端，CS 架构
+    > 大数据架构基本上都是CS架构，比如redis，zookeeper，hadoop等
     - HdfsClient 与 NameNode 交互元数据信息
     - HdfsClient 与 NameNode 交互获得指定块的位置，再直接与 DataNode 交互文件 Block 数据
+      > 如果都通过NameNode进行交互的话，会有单节点瓶颈问题 
   - 存储：
     - DataNode 利用服务器本地文件系统存储数据块
 
-### 2.2.3. 架构模型
+### 2.2.3. 架构模型+
 
 ![](./image/hadoop-begin-2.jpg)
 
@@ -256,16 +258,17 @@
   - 启动 DN 时会向 NN 汇报 block 信息
   - 通过向 NN 发送心跳保持与其联系（3 秒一次），如果 NN 10 分钟没有收到 DN 的心跳，则认为其已经 lost，并 copy 其上的 block 到其它 DN
     > 之后会自动从其他节点上查找副本数据恢复节点数据<br>
-    > 另外因为数据量大，判断 lost 的间隔不能太小，否则数据转移对服务器压力太大，期间也可能修复，10 分钟差不多。
+    > 另外因为数据量大，判断 lost 的间隔不能太小，否则数据转移对服务器压力太大，期间也可能完成自救修复，10 分钟差不多。
 
 - NameNode 持久化
 
   - 方式：
     - metadata 存储到磁盘文件名为”fsimage”（时点备份）
+      > 时点：每隔一段时间备份一次，看下面
       - fsimage:镜像快照
       - 是实现 java 序列化接口的对象序列化后的文件
       - 序列化写入磁盘慢，但恢复时快，因为就是二进制文件，直接读入内存即可
-    - edits 记录对 metadata 的操作日志-->Redis
+    - edits 记录对 metadata 的操作日志
       - edits log
       - 会把客户端对 NameNode 的所有操作写到操作日志中
       - 写入块，但恢复很慢，因为要一条一条执行
@@ -290,6 +293,7 @@
   - 恢复流程：
     - 读取 fsimage
     - 如果 edits 文件不为空，就读取并执行
+  - 缺点：不具有高可用的特性，在NN挂了的时候就真的挂了;而且不是实时备份
   - 2.x 之后有了 NameNode 备份，SecondeNameNode 基本没用了
     - 之后会讲持久化工作的替代者
 
@@ -357,9 +361,10 @@
 
   > ![](./image/hadoop-begin-8.jpg)
   > DistributedFileSystem， FSDataOutputStream 为两个对象，后者由前者创建，之后用的时候会更了解，此处不多讲<br>
-  > FSDataOutputStream 只会向第一个副本节点传输数据<br>
+  > 传输时并不是直接将一个block（比如128MB）传输出去，而是会讲block再次分割成小块（比如64KB），再通过管道的方式传输 <br>
+  > FSDataOutputStream 只会向第一个副本节点传输数据，对第一个副本节点负责，保证第一个副本节点的数据完整性<br>
   > FSDDataOutputStream 和 DataNode 之间可以看作管道，流式传输，FSDDataOutputStream 发送的数据包会流过三个 DataNode<br>
-  > 确认只发生在 Client 和第一个 DataNode 之间。所有 DataNode 一直和 NameNode 一直保持着通信，所以不必担心无法获知 block 是否传输完整<br>
+  > **确认**只发生在 Client 和第一个 DataNode 之间。而且所有 DataNode 一直和 NameNode 一直保持着通信，所以不必担心无法获知 block 是否传输完整<br>
   > 时间重叠：第一个 DataNode 传完之后，会立即启动下一个 block 的传输，但此时第二和第三个 DataNode 依旧在接收数据
 
   - 选择文件
@@ -380,8 +385,8 @@
   > ![](./image/hadoop-begin-9.jpg)
   > 本地读取策略：就近原则多个副本时，会读取最近的空闲的服务器
   - 和 NN 获取一部分 Block 副本位置列表
-  - 线性和 DN 获取 Block，最终合并为一个文件
   - 在 Block 副本列表中按距离择优选取
+  - 线性和 DN 获取 Block，最终合并为一个文件
   - MD5 验证数据完整性
 
 ### 2.2.8. HDFS 其他
@@ -393,11 +398,12 @@
     - 与 Linux 文件权限类似
       - r: read; w:write; x:execute
       - 权限 x 对于文件忽略，对于文件夹表示是否允许访问其内容
+    - hdfs只是文件系统，而不是操作系统，没有用户系统，只会读取linux的用户
     - 如果 Linux 系统用户 zhangsan 使用 hadoop 命令创建一个文件，那么这个文件在 HDFS 中 owner 就是 zhangsan。
     - HDFS 的权限目的：阻止误操作，但不绝对。HDFS 相信，你告诉我你是谁，我就认为你是谁。
 
 - 安全模式；
-
+  > 开启时的一段时间
   - namenode 启动的时候，首先将映像文件(fsimage)载入内存，并执行编辑日志(edits)中的各项操作。
   - 一旦在内存中成功建立文件系统元数据的映射，则创建一个新的 fsimage 文件(这个操作不需要 SecondaryNameNode)和一个空的编辑日志。
   - 此刻 namenode 运行在安全模式。即 namenode 的文件系统对于客服端来说是只读的。(显示目录，显示文件内容等。写、删除、重命名都会失败，尚未获取动态信息)。
@@ -422,7 +428,7 @@
     - 心跳机制
     - DN 向 NN 汇报 block 信息
     - 安全模式
-  - client
+  - client(api环境中通过java来写)
 
 ### 2.2.9. 根据官网部署伪分布式
 
@@ -544,9 +550,9 @@
 - 设置成相同时间：`date -s "2020-09-01 15:32:00"`
 - 免密钥操作
   > NN 要开启其他节点的角色进程，需要权限
-  - scp .ssh/authorized_keys root@node0002:.ssh/node0001.pub
+  - `scp .ssh/authorized_keys root@node0002:.ssh/node0001.pub`
     > 该操作是对免密码登录服务器进行记录。因为可能不止只有一个服务器可以免密码，所以不能直接覆盖 authorized_keys
-  - cat .ssh/node0001.pub >> .ssh/authorized_keys
+  - `cat .ssh/node0001.pub >> .ssh/authorized_keys`
 - 修改 core-site.xml
   ```xml
   <configuration>
@@ -602,7 +608,8 @@
   > 块分布，块 1 放在了 node0003,node0004。块 2 放在了 node0003,node0004（可以能 node0002，node0004 等，与是否为同一个文件无关）。
 - `vi + /var/learn/hadoop/full/dfs/data/current/BP-1207338582-192.168.187.101-1599033662736/current/finalized/subdir0/subdir0/blk_1073741825`
   > 查看块内容，可以发现按字节切割，会把行拆开
-  > ![](./image/hadoop-begin-21.jpg) > **以后讲内部代码时会讲解决办法，解决办法在当时说**
+  > ![](./image/hadoop-begin-21.jpg) <br>
+  > **以后讲内部代码时会讲解决办法，解决办法在当时说**
 
 ### 2.3.2. hadoop2.0 及 导入
 
@@ -668,10 +675,11 @@
   - 两种切换选择
     - 手动切换：通过命令实现主备之间的切换，可以用 HDFS 升级等场合
     - 自动切换：基于 Zookeeper 实现
-  - 基于 Zookeeper 自动切换方案
-  - ZooKeeper Failover Controller：监控 NameNode 健康状态，
-  - 并向 Zookeeper 注册 NameNode
-  - NameNode 挂掉后，ZKFC 为 NameNode 竞争锁，获得 ZKFC 锁的 NameNode 变为 active
+      > 详情看下面
+      - 基于 Zookeeper 自动切换方案
+      - ZooKeeper Failover Controller：监控 NameNode 健康状态，
+      - 并向 Zookeeper 注册 NameNode
+      - NameNode 挂掉后，ZKFC 为 NameNode 竞争锁，获得 ZKFC 锁的 NameNode 变为 active
 
 - hadoop2.0 高可用架构模型图
   > ![](./image/hadoop-begin-23.jpg) > ![](./image/hadoop-begin-24.jpg)
@@ -692,6 +700,14 @@
         - 现在使用：**JournalNode(日志节点)集群**。多台 JN 共同保存 edits 日志数据，JN 间保持同步。主 NN 往 JN 集群中写，备 NN 从 JN 中读
           - JournalNode 数量必须为奇数且大于等于 3
           - 过半机制：最多容忍一半及以下台服务器出现故障。原因之后再讲
+          - 弱一致性，cap定理
+        - 关于为何不在两台主备间进行socket通信：
+          ```
+          因为ack确认机制
+          如果主与备之间进行确认，如果备发生故障就完全堵塞
+          如果不进行确认，无法确认备份状态
+          强一致性
+          ```
   - 主备切换：
     - 手动切换：
       - 不使用 zookeeper 集群
@@ -701,13 +717,14 @@
       > 底层基于 zab 协议。来源于 1990 年 paxos 论文：基于消息一致性算法的论文
       - 使用 zookeeper 集群。自动完成主备节点的切换
       - zookeeper 基本原理:
-        > 一主多从架构<br>
+        > zookeeper高可用：一主多从架构<br>
+        > cs架构，zkfc相当于客户端，zookeeper集群相当于服务端<br>
         > 看文档（高可用配置那里）。<br>
         > 四大机制：register(注册)，watchEvent(监听事件),callback(客户端函数的回调,客户端是 zkfc 的函数),
         - zookeeper 在每个 NN 上开启一个 FailoverController(故障转移控制,缩写：zkfc)进程。
-          > [组件详解](https://blog.csdn.net/bocai8058/article/details/78870451)
-          - elector 组件:每个 FailoverController 进程中有 elector(选举)进程，都向 zookeeper 集群申请作为主节点（register，注册）。最先进行注册的节点会作为主节点（注册顺序可以通过代码控制）。
-          - HealthMonitor:健康检查组件，检查 NN 健康状态
+          > [组件详解](https://blog.csdn.net/bocai8058/article/details/78870451)。详细多查查网页
+          - elector 组件:每个 FailoverController 进程中有 elector(选举)进程，都向 zookeeper 集群申请作为主节点（register，注册）。最先进行注册的节点会作为主节点（注册顺序可以通过代码控制）。（相当于一个回调函数）
+          - HealthMonitor:健康检查组件，检查 NN 健康状态。（相当于一个事件）
         - zookeeper 中为主 NN 创建一个节点路径`znode`，该路径之下，会有节点的注册信息
         - 备 NN 会委托 zookeeper 检查 zookeeper 观察主 NN 所发生的事件
         - 如果 NN 出现故障，zookeeper 告知备 NN
