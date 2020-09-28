@@ -85,6 +85,7 @@
         ```
         分到2000台服务器，一台服务器分500MB数据
         向一个服务器发送500MB需要5s，则2000台服务器需要10000s（两个半小时）
+        移动数据的成本相当高
         ```
       - 数据迁移，同名文件迁移到同一个服务器花费时间
         ```
@@ -601,6 +602,7 @@
 - 创建 hdfs 的文件夹`hdfs dfs mkdir -p /user/root`
 - 设置测试文件`for i in $(seq 100000);do echo "hello hadoop $i" >> test.txt;done`
 - 以指定块大小发放文件 `hdfs dfs -D dfs.blocksize=1048576 -put test.txt`
+  > 这里指定的是1MB
   > 属性名可以查看官方文档中的 hdfs-defult.xml<br>
   > 目的路径不写的话默认放到/user/root 路径(如果不提前创建的话会报错)<br>
 - 查看块分布
@@ -791,6 +793,7 @@
     </property>
      <property>
       <name>dfs.namenode.rpc-address.mycluster.nn1</name>
+      <!-- 远程过程调用（Remote Procedure Call） -->
       <!-- rpc:remote procedure call.类似java中的rmi -->
       <value>node0001:8020</value>
       <!-- nn1所在ip:port -->
@@ -887,6 +890,7 @@
     - mv zoo_sample.cfg zoo.cfg
     - vi zoo.cfg
     - 修改：`dataDir=/var/learn/zk`
+      > 指定该文件夹用来存放编号文件，见下方
     - 结尾添加：
       > zookeeper 集群在搭建一开始就需要提供集群服务器的信息，并为服务器编号 serverid<br>
       > zookeeper 是一主多从架构，zookeeper 的编号与选举机制有关。同时启动的情况下，最大编号服务器会作为主服务器（其他因素之后讲）
@@ -930,20 +934,22 @@
   - NN-1(node0001)格式化：`hdfs namenode -format`
     > 格式化namenode时，也会将journalnode格式化
   - 启动 NN-1 角色进程 `hadoop-daemon.sh start namenode`
-    > `start-dfs.sh`是开启所有服务器的角色进程，包括 ZKFC
-    > 该操作是为了 NN-2 和 NN-1 间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1 作为 S,NN-2 作为 C）
-  - NN-2 同步 NN-1 的信息：`hdfs namenode -bootstrapStandby`
+    > `start-dfs.sh`是开启所有服务器的角色进程，包括 ZKFC和备NN，而NN2还没有格式化，所以现在用不上
+    > 该操作仅仅会启动NN1的角色守护进程，是为了 NN-2 和 NN-1 间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1 作为 S,NN-2 作为 C）
+  - NN-2 同步 NN-1 的格式化信息，NN2上执行：`hdfs namenode -bootstrapStandby`
     > NN-2 不要格式化，否则两节点 id 不一致，无法构成一个集群
   - node0001: 在zookeeper集群中创建目录。hdfs zkfc -formatZK
+    > 实质是hdfs在zookeeper集群上初始化，会在zookeeper下创建/hadoop-ha/mucluster目录
   - zkCli.sh，进入 zookeeper 客户端交互（哪个 ZK 节点都行）
     - help 查看命令列表
     - ls / 查看根目录
     - ls /hadoop-ha
   - node0001:`start-dfs.sh`启动集群
-    > 其他可以免密登录的节点来启动也行<br>
-    > NN-1 已经启动，不会重复启动<br>
+    > 其他可以免密登录的节点来启动也行，但当前只为NN1设置了免密<br>
+    > NN-1 守护角色进程已经启动，不会重复启动<br>
     > zkfc会在此时启动
   - zkCli.sh，进入 zookeeper 客户端交互
+    > zookeeper集群中的无论哪个机器都能进入。原理(上面提到过)：底层基于 zab 协议。来源于 1990 年 paxos 论文：基于消息一致性算法的论文
     - ls / 查看根目录
     - ls /hadoop-ha
     - get /hadoop-ha/mycluster/ActiveBreadCrumd
@@ -975,14 +981,240 @@
   - 启动三个zookeeper服务端进程
   - start-dfs.sh
 
+### 2.3.6. windows下开发环境(java api操作)
+
+- 导入相关jar包
+- 通过代码操作
+  > 注意，因为CS架构，java代码只能在Client一端运行，硬性要求。无法在NN1上运行<br>
+  > 真正使用这些api的是Mapreduce框架，此处只是试试
+  ```java
+  public class TestHDFS {
+    
+    Configuration  conf = null;
+    FileSystem  fs = null;
+    
+    @Before
+    public void conn() throws Exception{
+      
+      conf = new Configuration();// 会自动读取根目录下的配置文件 hdfs-site.xml,core-site.xml
+      // conf.set("fs.defaultFS", "hdfs://node01:9000");
+      fs = FileSystem.get(conf);
+    }
+    
+    @After
+    public void close() throws Exception{
+      fs.close();
+    }
+    
+    @Test
+    public void testConf(){
+      System.out.println(conf.get("fs.defaultFS"));
+    }
+    
+    @Test
+    public void mkdir() throws Exception{
+      // 创建文件夹
+      Path dir = new Path("/sxt");
+      if(!fs.exists(dir)){
+        fs.mkdirs(dir );
+      }
+    }
+    
+    @Test
+    public void uploadFile() throws Exception{
+      // 上传文件
+      Path file = new Path("/sxt/ok.txt");// 上传位置
+      FSDataOutputStream output = fs.create(file); // 上传对象
+      InputStream input = new BufferedInputStream(new FileInputStream(new File("c:\\nginx")) ) ;//读取文件
+      // hadoop提供 io 工具类，将输入流中的数据复制到输出流。
+      IOUtils.copyBytes(input, output, conf, true);
+    }
+    
+    @Test
+    public void readFile() throws Exception{
+      Path path = new Path("/user/root/test.txt"); // hdfs中的文件路径
+      FileStatus ffs = fs.getFileStatus(path);
+
+      // 获取块的位置信息(数组)  !!!! 重要！！！！
+      BlockLocation[] blks = fs.getFileBlockLocations(ffs , 0, ffs.getLen());
+      
+      for (BlockLocation b : blks) {
+        System.out.println(b); 
+        // 0,1048576,node08,node09
+        // 1048576,540319,node08,node09
+
+        HdfsBlockLocation hbl = (HdfsBlockLocation)b;
+        System.out.println(hbl.getLocatedBlock().getBlock().getBlockId());
+      }
+      
+      // 读取文件
+      FSDataInputStream input = fs.open(path);
+      
+      // 输出文件内容，不转为char就是ascii码
+      // 一次读一个Byte
+      System.out.println((char)input.readByte());//h
+      System.out.println((char)input.readByte());//e
+      System.out.println((char)input.readByte());//l
+      System.out.println((char)input.readByte());//l
+      System.out.println((char)input.readByte());//o
+      
+      input.seek(1048576);//调整指针，读取第二快的
+      System.out.println((char)input.readByte());
+    }
+    
+    @Test
+    public void seqfile() throws Exception{
+      
+      Path value = new Path("/haha.seq");
+      
+      IntWritable key = new IntWritable();
+      Text val = new Text();
+      Option file = SequenceFile.Writer.file(value);
+      Option keyClass = SequenceFile.Writer.keyClass(key.getClass());
+      Option valueClass = SequenceFile.Writer.valueClass(val.getClass());
+      
+      Writer writer = SequenceFile.createWriter(conf, file,keyClass,valueClass);
+      
+      for (int i = 0; i < 10; i++) {
+        key.set(i);
+        val.set("sxt..."+i);
+        writer.append(key, val);
+      }
+      writer.hflush();
+      writer.close();
+      
+      SequenceFile.Reader.Option infile = Reader.file(value);
+      SequenceFile.Reader reader = new SequenceFile.Reader(conf,infile);
+      
+      String name = reader.getKeyClassName();
+      System.out.println(name);
+    }
+  }
+  ```
+
 ## 2.4. 分布式计算框架 MR
 
 > 计算向数据移动
 
-## 2.5. 体系结构
+### 2.4.1. MapReduce框架概述
 
-## 2.6. 安装
+- MapReduce:
+  - Map
+    - 接收传递来的数据
+    - 提取数据特征
+    - 映射（map）成对应的中间级，key-value模式(由程序员自己设计)
+  - Reduce
+    - 从Map接收k-v数据
+    - 数据处理，合并，精简（reduce）
+    - 进行计算
+- 流程:输入(格式化k,v)数据集map映射成一个中间数据集(k,v)reduce (sql)
+  - 相同的key为一组，调用reduce方法，方法内迭代一组数据进行运算（类似sql）
+- hadoop 作用：将大量数据通过数据挖掘形成具有相同数据特征的多个组，然后通过MapReduce并行执行运算
+- 涉及运算：  
+  - 比较
+  - 排序
+  - 遍历
+  - ......
 
-## 2.7. shell
+### 2.4.2. MapReduce架构
 
-## 2.8. API
+![](./image/mapreduce-1.jpg)
+
+- 阶段一：切片
+  - 默认情况下一个map对应一个block。但往往块的数量要小于map数量
+  - block是物理上被切割出来的的文件，而split是逻辑上的片
+  - map和block没有直接对应，中间还有一个split，split和map一一对应
+    - 原因：
+      - 数据量小的时候，没有问题
+      - 数据量大的时候，一个块的计算就要花费很多时间（比如一年），尽管多个块并行计算，也会花费很多时间
+      - 因为块的大小已经物理固定，不能改变，所以提出了split（片）的概念
+      - 每个块多能切成多个片，再让每个片对应一个map
+      - 想要知道有多少个map，就要知道块的大小，所在位置，以及分片方式大小
+- 阶段二：map映射
+  - split数据交给map，map做中间级映射，成为`K-V型数据`
+- 阶段三：shuffler(洗牌)
+  - 将数据发给reduce，根据分区不同上传到不同reduce上（分区后面讲）
+    > 涉及网络数据迁移
+  - 将key相同的数据merge起来
+  - 一个reduce可以处理多个key。一个key对应一个reduce。
+    > reduce-key：一对多<br>
+    > 注意：一个key不能分给多个reduce。所以需要处理最大数据量reduce就会称为执行时间的瓶颈<br>
+    > storm 没有这个问题
+- 阶段四：reduce进行计算
+  - 所有reduce并行计算
+  - **相同的key**数据调一次reduce
+
+### 2.4.3. 架构细节
+
+![](./image/mapreduce-2.jpg)
+
+- split默认和block大小相同
+- 映射细讲：
+  - split通过map映射为`k-v型数据`
+    - 每个reduce就是一个分区。
+    - 分区数量取决于人为设定的Reduce-Task数量
+    - 默认只有一个分区
+    - 每个key-value生成时，都会给定一个分区编号(partition)，分区编号与reduce相对应
+    - key:reduce为n:1，也就是说key:分区为n:1
+  - （map端，多个map并行处理）将k-v型数据处理
+    - 部分数据存入到内存的buffer（128MB）中,buffer中处理:
+      - 在buffer(128MB)中**根据分区编号**进行**数据粗排序** 
+        > 目的是避免分发数据时每次都要重新遍历
+        - 比如1/3段为reduce1(对应key1,key2)的，中间1/3段为reduce2(对应key3)的，最后1/3段为reduce3(对应key4)的
+      - 将buffer的分区内部进行**二次排序**
+        > 目的是避免reduce数据时每次都要重新遍历（key相同的数据才能进行reduce）
+        - 比如reduce1中有两个key，是乱序的
+        - 需要将两个key分开
+      - 对数据进行压缩（conbiner），数据简单处理
+        - 比如reduce会用到数据的和，在map端就可以完成处理，再把数据传递下去
+        - 减少io数据量交互
+      - 将处理完的数据输出为一个128MB的小文件
+    - 重复操作，直到把所有数据处理完
+    - 将所有小文件合并为一个大文件， 降低寻址难度
+- shuffler
+  - 所有map端与reduce端间上传数据，
+  - 在reduce端执行归并算法
+    > 归并的话可以看看入门情景
+    - 因为不同map处理数据所需时间不同
+    - 所以先处理完的map上传的数据会进行归并。先到先处理
+    - 后来的后进行归并
+    - 但最终不一定都要归并为一个大文件（图中是归并为了一个大文件），这样会造成io流的浪费
+    - 最终归并为若干个小文件也行，只要保证文件间有序即可
+
+### 2.4.4. 示例
+
+![](./image/word-statics.jpg)
+
+### 2.4.5. 其他
+
+- 分区与分组
+  - 分区的目的是根据Key值决定Mapper的输出记录被送到哪一个Reducer上去处理。
+  - 分组就是与记录的Key相关。在同一个分区里面，具有相同Key值的记录是属于同一个分组的。
+
+- Map：
+  - 读懂数据
+    > 程序员工作，自己确定k-v的标准
+  - 映射为KV模型
+  - 并行分布式
+  - 计算向数据移动
+    > **将map-task和reduce-task移动到block块所在节点上**
+- Reduce：
+  - 数据全量/分量加工（partition/group）
+  - Reduce中可以包含不同的key
+  - 相同的Key汇聚到一个Reduce中
+  - 相同的Key调用一次reduce方法
+    - 排序实现key的汇聚
+- K,V使用自定义数据类型
+  - 不支持基本类型
+  - 作为参数传递，节省开发成本，提高程序自由度
+    > 功能类似可变参数
+  - Writable序列化：使能分布式程序数据交互
+  - Comparable比较器：实现具体排序（字典序，数值序等
+
+### 2.4.6. 运行架构：计算向数据移动
+
+#### 1.x
+
+![](./image/mapreduce-3.jpg)
+
+#### 2.x
