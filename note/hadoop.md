@@ -1213,8 +1213,138 @@
 
 ### 2.4.6. 运行架构：计算向数据移动
 
-#### 1.x
+#### 2.4.6.1. 版本1.x
+
+##### 2.4.6.1.1. 架构
 
 ![](./image/mapreduce-3.jpg)
 
-#### 2.x
+- client
+  - 做所需要的规划，比如如何切片，如何分区，如何处理，处理什么。设计作业
+  - 做好后打成jar包，提交给hadoop集群中的hdfs的**NameNode**
+    > 不给 JobTracker是因为JobTracker单点，不安全。
+  - 最终作业提交到JobTracker
+
+- JobTrakcer 任务调度：
+  - Job Tracker 和 Task Tracker 关系类似于 NameNode和DateNode关系
+  - Job Tracker是调度角色；Task Tracker是任务调度角色，辅助Job Tracker
+  - 当Job Trakcer接受到Client的任务指派后，会先从NameNode获得块的相关信息
+  - 再指定相关节点开启 Task Trakcer
+  - Task Tracker主动询问Job Tracker开启 Map-Task和Reduce-Task
+    > 之所以不由Job Tracker来开启 Task 是因为压力太大，所以要分给 Task Tracker<br>
+    > 注意：Map和Reduce不再同一节点
+  - Task Tracker再从NameNode下载任务jar包到DataNode，读取再对数据进行计算  (**计算向数据移动**)
+  
+- JobTracker 资源管理：
+  - 想要开启Map-Task和Reduce-Task，就要确认节点上是否还有剩余资源（比如进程数，内存等）
+  - Task-Tracker会时刻监控节点的资源利用情况
+  - Job-Tracker会和Task_Tracker保持心跳，Task Tracker汇报资源状况
+
+##### 2.4.6.1.2. 示例流程：
+
+![](./image/mapreduce-4.jpg)
+![](./image/mapreduce-5.jpg)
+
+- 先map,再reduce
+- 此处将最后结果交给了客户端，但不是必须的
+  - 既可以存储起来
+  - 也可以作为下一次的输入，不断迭代计算
+
+
+##### 2.4.6.1.3. 大纲总结与问题：
+- MRv1角色：
+  - JobTracker
+    - 核心，主，单点
+    - 调度所有的作业
+    - 监控整个集群的资源负载
+  - TaskTracker
+    - 从，自身节点资源管理
+    - 和JobTracker心跳，汇报资源，获取Task
+  - Client
+    - 作业为单位
+    - 规划作业计算分布
+    - 提交作业资源到HDFS
+    - 最终提交作业到JobTracker
+- 弊端：
+  - JobTracker：负载过重，单点故障
+  - 资源管理与计算调度强耦合，其他计算框架需要重复实现资源管理
+    > 比如storm也进来了，storm和mapreduce的资源管理不互相联系，可能会出现重复占用，布置失败，就要重新布置
+  - 不同框架对资源不能全局管理
+
+#### 2.4.6.2. 版本2.x
+
+##### 2.4.6.2.1. 架构
+
+![](./image/mapreduce-6.jpg)
+
+> 一切皆Container
+> 基于YARN的资源管理：Resource Manger + Node Manager + Container
+
+- 大致流程:
+  - client把任务提交给 Resource Manager（相当于 Job Tracker中的资源管理功能）
+  - NodeManager一直主动向Resource Manager汇报节点状态信息。Resource Manager统计资源情况
+  - Resource Manger会寻找相对空闲的服务器开启Application Master进行任务调度
+    > Application Master负责任务切分、任务调度、任务监控和容错等
+  - Application Master获取块位置信息和任务作业，进行资源规划
+  - Application Master 向Resource Manger请求资源
+  - Resource Manager 允许请求，Application Master开启工作进程 
+    - Application Master进一步将资源分配给内部的任务
+  - Application Master在指定节点创建Container(默认1G)
+  - 在Container中创建 Map-task,Reduce-Task进行运算
+    > Container是为了防止占用太多空间。获取到数据后，可能会查询数据库做数据的拼接，数据量可能会变化，需要通过container限制
+    > 同时利于资源规划
+
+##### 2.4.6.2.2. 细节：
+
+- Resource Manager 实现了高可用，通过zookeeper维护
+- 长服务与短服务：
+  - 集群搭建一开始到最后一直开启的，是长服务
+  - 反则就是短服务
+- Application Master是短服务，只有在提交任务时，临时生成的服务，不需要搭建。一个MapRaduce作业，对应一个 Application Master进程，也就是说一个几点上不止一个
+- Application Master 容错：
+  - 失败后，由YARN重新启动
+  - 任务失败后，MRAppMaster重新申请资源
+
+
+##### 2.4.6.2.3. 流程示例：
+
+![](./image/mapreduce-7.jpg)
+
+> 该图有和spark对比，所以看看就行，之后再仔细看
+
+- Executor:一个线程
+- Worker：相当于进程
+
+
+##### 2.4.6.2.4. 大纲总结
+
+- YARN简介：  
+  - YARN：Yet Another Resource Negotiator；
+  - Hadoop 2.0新引入的资源管理系统，直接从MRv1演化而来的；
+    - 核心思想：将MRv1中JobTracker的资源管理和任务调度两个功能分开，分别由ResourceManager和ApplicationMaster进程实现
+    - ResourceManager：负责整个集群的资源管理和调度
+    - ApplicationMaster：负责应用程序相关的事务，比如任务调度、任务监控和容错等
+  - YARN的引入，使得多个计算框架可运行在一个集群中
+    - 每个应用程序对应一个ApplicationMaster
+    - 目前多个计算框架可以运行在YARN上，比如MapReduce、Spark、Storm等
+
+- YARN：解耦资源与计算
+  - ResourceManager
+    - 主，核心
+    - 集群节点资源管理
+  - NodeManager
+    - 与RM汇报资源
+    - 管理Container生命周期
+    - 计算框架中的角色都以Container表示
+  - Container：【节点NM，CPU,MEM,I/O大小，启动命令】
+    - 默认NodeManager启动线程监控Container大小，**超出申请资源额度，kill**
+    - 支持Linux内核的Cgroup
+- MR ：
+  - MR-ApplicationMaster-Container
+    - 作业为单位，避免单点故障，负载到不同的节点
+    - 创建Task需要和RM申请资源（Container  /MR 1024MB）
+  - Task-Container
+- Client：
+  - RM-Client：请求资源创建AM
+  - AM-Client：与AM交互
+- MapTask/ReduceTask：任务驱动引擎，与MRv1一致
