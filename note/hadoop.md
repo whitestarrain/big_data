@@ -216,10 +216,10 @@
     - DataNode 与 NameNode 保持心跳，提交 Block 列表
       > DataNode 向 NameNode 主动提交 Block 列表
   - 客户端，CS 架构
-    > 大数据架构基本上都是CS架构，比如redis，zookeeper，hadoop等
+    > 大数据架构基本上都是 CS 架构，比如 redis，zookeeper，hadoop 等
     - HdfsClient 与 NameNode 交互元数据信息
     - HdfsClient 与 NameNode 交互获得指定块的位置，再直接与 DataNode 交互文件 Block 数据
-      > 如果都通过NameNode进行交互的话，会有单节点瓶颈问题 
+      > 如果都通过 NameNode 进行交互的话，会有单节点瓶颈问题
   - 存储：
     - DataNode 利用服务器本地文件系统存储数据块
 
@@ -294,7 +294,7 @@
   - 恢复流程：
     - 读取 fsimage
     - 如果 edits 文件不为空，就读取并执行
-  - 缺点：不具有高可用的特性，在NN挂了的时候就真的挂了;而且不是实时备份
+  - 缺点：不具有高可用的特性，在 NN 挂了的时候就真的挂了;而且不是实时备份
   - 2.x 之后有了 NameNode 备份，SecondeNameNode 基本没用了
     - 之后会讲持久化工作的替代者
 
@@ -362,10 +362,9 @@
 
   > ![](./image/hadoop-begin-8.jpg)
   > DistributedFileSystem， FSDataOutputStream 为两个对象，后者由前者创建，之后用的时候会更了解，此处不多讲<br>
-  > 传输时并不是直接将一个block（比如128MB）传输出去，而是会讲block再次分割成小块（比如64KB），再通过管道的方式传输 <br>
+  > 传输时并不是直接将一个 block（比如 128MB）传输出去，而是会讲 block 再次分割成小块（比如 64KB），再通过管道的方式传输 <br>
   > FSDataOutputStream 只会向第一个副本节点传输数据，对第一个副本节点负责，保证第一个副本节点的数据完整性<br>
-  > FSDDataOutputStream 和 DataNode 之间可以看作管道，流式传输，FSDDataOutputStream 发送的数据包会流过三个 DataNode<br>
-  > **确认**只发生在 Client 和第一个 DataNode 之间。而且所有 DataNode 一直和 NameNode 一直保持着通信，所以不必担心无法获知 block 是否传输完整<br>
+  > FSDDataOutputStream 和 DataNode 之间可以看作管道，流式传输，FSDDataOutputStream 发送的数据包会流过三个 DataNode<br> > **确认**只发生在 Client 和第一个 DataNode 之间。而且所有 DataNode 一直和 NameNode 一直保持着通信，所以不必担心无法获知 block 是否传输完整<br>
   > 时间重叠：第一个 DataNode 传完之后，会立即启动下一个 block 的传输，但此时第二和第三个 DataNode 依旧在接收数据
 
   - 选择文件
@@ -399,12 +398,14 @@
     - 与 Linux 文件权限类似
       - r: read; w:write; x:execute
       - 权限 x 对于文件忽略，对于文件夹表示是否允许访问其内容
-    - hdfs只是文件系统，而不是操作系统，没有用户系统，只会读取linux的用户
+    - hdfs 只是文件系统，而不是操作系统，没有用户系统，只会读取 linux 的用户
     - 如果 Linux 系统用户 zhangsan 使用 hadoop 命令创建一个文件，那么这个文件在 HDFS 中 owner 就是 zhangsan。
     - HDFS 的权限目的：阻止误操作，但不绝对。HDFS 相信，你告诉我你是谁，我就认为你是谁。
 
 - 安全模式；
+
   > 开启时的一段时间
+
   - namenode 启动的时候，首先将映像文件(fsimage)载入内存，并执行编辑日志(edits)中的各项操作。
   - 一旦在内存中成功建立文件系统元数据的映射，则创建一个新的 fsimage 文件(这个操作不需要 SecondaryNameNode)和一个空的编辑日志。
   - 此刻 namenode 运行在安全模式。即 namenode 的文件系统对于客服端来说是只读的。(显示目录，显示文件内容等。写、删除、重命名都会失败，尚未获取动态信息)。
@@ -429,7 +430,7 @@
     - 心跳机制
     - DN 向 NN 汇报 block 信息
     - 安全模式
-  - client(api环境中通过java来写)
+  - client(api 环境中通过 java 来写)
 
 ### 2.2.9. 根据官网部署伪分布式
 
@@ -602,7 +603,7 @@
 - 创建 hdfs 的文件夹`hdfs dfs mkdir -p /user/root`
 - 设置测试文件`for i in $(seq 100000);do echo "hello hadoop $i" >> test.txt;done`
 - 以指定块大小发放文件 `hdfs dfs -D dfs.blocksize=1048576 -put test.txt`
-  > 这里指定的是1MB
+  > 这里指定的是 1MB
   > 属性名可以查看官方文档中的 hdfs-defult.xml<br>
   > 目的路径不写的话默认放到/user/root 路径(如果不提前创建的话会报错)<br>
 - 查看块分布
@@ -610,8 +611,7 @@
   > 块分布，块 1 放在了 node0003,node0004。块 2 放在了 node0003,node0004（可以能 node0002，node0004 等，与是否为同一个文件无关）。
 - `vi + /var/learn/hadoop/full/dfs/data/current/BP-1207338582-192.168.187.101-1599033662736/current/finalized/subdir0/subdir0/blk_1073741825`
   > 查看块内容，可以发现按字节切割，会把行拆开
-  > ![](./image/hadoop-begin-21.jpg) <br>
-  > **以后讲内部代码时会讲解决办法，解决办法在当时说**
+  > ![](./image/hadoop-begin-21.jpg) <br> > **以后讲内部代码时会讲解决办法，解决办法在当时说**
 
 ### 2.3.2. hadoop2.0 及 导入
 
@@ -702,8 +702,8 @@
         - 现在使用：**JournalNode(日志节点)集群**。多台 JN 共同保存 edits 日志数据，JN 间保持同步。主 NN 往 JN 集群中写，备 NN 从 JN 中读
           - JournalNode 数量必须为奇数且大于等于 3
           - 过半机制：最多容忍一半及以下台服务器出现故障。原因之后再讲
-          - 弱一致性，cap定理
-        - 关于为何不在两台主备间进行socket通信：
+          - 弱一致性，cap 定理
+        - 关于为何不在两台主备间进行 socket 通信：
           ```
           因为ack确认机制
           如果主与备之间进行确认，如果备发生故障就完全堵塞
@@ -719,8 +719,8 @@
       > 底层基于 zab 协议。来源于 1990 年 paxos 论文：基于消息一致性算法的论文
       - 使用 zookeeper 集群。自动完成主备节点的切换
       - zookeeper 基本原理:
-        > zookeeper高可用：一主多从架构<br>
-        > cs架构，zkfc相当于客户端，zookeeper集群相当于服务端<br>
+        > zookeeper 高可用：一主多从架构<br>
+        > cs 架构，zkfc 相当于客户端，zookeeper 集群相当于服务端<br>
         > 看文档（高可用配置那里）。<br>
         > 四大机制：register(注册)，watchEvent(监听事件),callback(客户端函数的回调,客户端是 zkfc 的函数),
         - zookeeper 在每个 NN 上开启一个 FailoverController(故障转移控制,缩写：zkfc)进程。
@@ -922,34 +922,36 @@
   - ZKFC 进程在主备 NN 上会随着 hadoop 启动而启动（也可以手动单独启动）(查文档)
 
 - 首次启动
+
   > 其实也可以将启动和结束写成一个脚本。之后有时间写下
+
   - zookeeper 已经启动了
-  - journalnode启动
-    > 目的：提前启动journalnode，给NN2同步NN1的格式化信息（如果NN2额外格式化，id会有区别）<br>
-    > 过程：启动journalnode，启动主namenode(不启动hadoop),格式化主namenode(edits放入journalnode)，备NN通过journalnode同步主NN的格式化信息<br>
-    > 所以再次启动时，就不用提前启动journalnode了。start-dfs.sh会自动启动journalnode
+  - journalnode 启动
+    > 目的：提前启动 journalnode，给 NN2 同步 NN1 的格式化信息（如果 NN2 额外格式化，id 会有区别）<br>
+    > 过程：启动 journalnode，启动主 namenode(不启动 hadoop),格式化主 namenode(edits 放入 journalnode)，备 NN 通过 journalnode 同步主 NN 的格式化信息<br>
+    > 所以再次启动时，就不用提前启动 journalnode 了。start-dfs.sh 会自动启动 journalnode
     - node0001 启动 journalnode:`hadoop-daemon.sh start journalnode`
     - node0002 启动 journalnode:`hadoop-daemon.sh start journalnode`
     - node0003 启动 journalnode:`hadoop-daemon.sh start journalnode`
   - NN-1(node0001)格式化：`hdfs namenode -format`
-    > 格式化namenode时，也会将journalnode格式化
+    > 格式化 namenode 时，也会将 journalnode 格式化
   - 启动 NN-1 角色进程 `hadoop-daemon.sh start namenode`
-    > `start-dfs.sh`是开启所有服务器的角色进程，包括 ZKFC和备NN，而NN2还没有格式化，所以现在用不上
-    > 该操作仅仅会启动NN1的角色守护进程，是为了 NN-2 和 NN-1 间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1 作为 S,NN-2 作为 C）
-  - NN-2 同步 NN-1 的格式化信息，NN2上执行：`hdfs namenode -bootstrapStandby`
+    > `start-dfs.sh`是开启所有服务器的角色进程，包括 ZKFC 和备 NN，而 NN2 还没有格式化，所以现在用不上
+    > 该操作仅仅会启动 NN1 的角色守护进程，是为了 NN-2 和 NN-1 间能够进行信息传递，之后要拷贝格式化后得到的文件（类似：NN-1 作为 S,NN-2 作为 C）
+  - NN-2 同步 NN-1 的格式化信息，NN2 上执行：`hdfs namenode -bootstrapStandby`
     > NN-2 不要格式化，否则两节点 id 不一致，无法构成一个集群
-  - node0001: 在zookeeper集群中创建目录。hdfs zkfc -formatZK
-    > 实质是hdfs在zookeeper集群上初始化，会在zookeeper下创建/hadoop-ha/mucluster目录
+  - node0001: 在 zookeeper 集群中创建目录。hdfs zkfc -formatZK
+    > 实质是 hdfs 在 zookeeper 集群上初始化，会在 zookeeper 下创建/hadoop-ha/mucluster 目录
   - zkCli.sh，进入 zookeeper 客户端交互（哪个 ZK 节点都行）
     - help 查看命令列表
     - ls / 查看根目录
     - ls /hadoop-ha
   - node0001:`start-dfs.sh`启动集群
-    > 其他可以免密登录的节点来启动也行，但当前只为NN1设置了免密<br>
+    > 其他可以免密登录的节点来启动也行，但当前只为 NN1 设置了免密<br>
     > NN-1 守护角色进程已经启动，不会重复启动<br>
-    > zkfc会在此时启动
+    > zkfc 会在此时启动
   - zkCli.sh，进入 zookeeper 客户端交互
-    > zookeeper集群中的无论哪个机器都能进入。原理(上面提到过)：底层基于 zab 协议。来源于 1990 年 paxos 论文：基于消息一致性算法的论文
+    > zookeeper 集群中的无论哪个机器都能进入。原理(上面提到过)：底层基于 zab 协议。来源于 1990 年 paxos 论文：基于消息一致性算法的论文
     - ls / 查看根目录
     - ls /hadoop-ha
     - get /hadoop-ha/mycluster/ActiveBreadCrumd
@@ -958,6 +960,7 @@
   - 浏览器进入 node0001:50070 node0002:50070
 
 - 测试
+
   - 1
     - node0006:`hadoop-daemon.sh stop namenode`
     - 浏览器进入 node0002:50070
@@ -974,43 +977,46 @@
     - node0006 变为主
 
 - 关闭
-  - 关闭除zookeeper外的所有进程：`stop-dfs.sh`
-  - 关闭zookeeper:三个zookeeper服务器执行`zkServer.sh stop`
+
+  - 关闭除 zookeeper 外的所有进程：`stop-dfs.sh`
+  - 关闭 zookeeper:三个 zookeeper 服务器执行`zkServer.sh stop`
 
 - 再次启动：
-  - 启动三个zookeeper服务端进程
+  - 启动三个 zookeeper 服务端进程
   - start-dfs.sh
 
-### 2.3.6. windows下开发环境(java api操作)
+### 2.3.6. windows 下开发环境(java api 操作)
 
-- 导入相关jar包
+- 导入相关 jar 包
 - 通过代码操作
-  > 注意，因为CS架构，java代码只能在Client一端运行，硬性要求。无法在NN1上运行<br>
-  > 真正使用这些api的是Mapreduce框架，此处只是试试
+
+  > 注意，因为 CS 架构，java 代码只能在 Client 一端运行，硬性要求。无法在 NN1 上运行<br>
+  > 真正使用这些 api 的是 Mapreduce 框架，此处只是试试
+
   ```java
   public class TestHDFS {
-    
+
     Configuration  conf = null;
     FileSystem  fs = null;
-    
+
     @Before
     public void conn() throws Exception{
-      
+
       conf = new Configuration();// 会自动读取根目录下的配置文件 hdfs-site.xml,core-site.xml
       // conf.set("fs.defaultFS", "hdfs://node01:9000");
       fs = FileSystem.get(conf);
     }
-    
+
     @After
     public void close() throws Exception{
       fs.close();
     }
-    
+
     @Test
     public void testConf(){
       System.out.println(conf.get("fs.defaultFS"));
     }
-    
+
     @Test
     public void mkdir() throws Exception{
       // 创建文件夹
@@ -1019,7 +1025,7 @@
         fs.mkdirs(dir );
       }
     }
-    
+
     @Test
     public void uploadFile() throws Exception{
       // 上传文件
@@ -1029,7 +1035,7 @@
       // hadoop提供 io 工具类，将输入流中的数据复制到输出流。
       IOUtils.copyBytes(input, output, conf, true);
     }
-    
+
     @Test
     public void readFile() throws Exception{
       Path path = new Path("/user/root/test.txt"); // hdfs中的文件路径
@@ -1037,19 +1043,19 @@
 
       // 获取块的位置信息(数组)  !!!! 重要！！！！
       BlockLocation[] blks = fs.getFileBlockLocations(ffs , 0, ffs.getLen());
-      
+
       for (BlockLocation b : blks) {
-        System.out.println(b); 
+        System.out.println(b);
         // 0,1048576,node08,node09
         // 1048576,540319,node08,node09
 
         HdfsBlockLocation hbl = (HdfsBlockLocation)b;
         System.out.println(hbl.getLocatedBlock().getBlock().getBlockId());
       }
-      
+
       // 读取文件
       FSDataInputStream input = fs.open(path);
-      
+
       // 输出文件内容，不转为char就是ascii码
       // 一次读一个Byte
       System.out.println((char)input.readByte());//h
@@ -1057,24 +1063,24 @@
       System.out.println((char)input.readByte());//l
       System.out.println((char)input.readByte());//l
       System.out.println((char)input.readByte());//o
-      
+
       input.seek(1048576);//调整指针，读取第二快的
       System.out.println((char)input.readByte());
     }
-    
+
     @Test
     public void seqfile() throws Exception{
-      
+
       Path value = new Path("/haha.seq");
-      
+
       IntWritable key = new IntWritable();
       Text val = new Text();
       Option file = SequenceFile.Writer.file(value);
       Option keyClass = SequenceFile.Writer.keyClass(key.getClass());
       Option valueClass = SequenceFile.Writer.valueClass(val.getClass());
-      
+
       Writer writer = SequenceFile.createWriter(conf, file,keyClass,valueClass);
-      
+
       for (int i = 0; i < 10; i++) {
         key.set(i);
         val.set("sxt..."+i);
@@ -1082,10 +1088,10 @@
       }
       writer.hflush();
       writer.close();
-      
+
       SequenceFile.Reader.Option infile = Reader.file(value);
       SequenceFile.Reader reader = new SequenceFile.Reader(conf,infile);
-      
+
       String name = reader.getKeyClassName();
       System.out.println(name);
     }
@@ -1096,255 +1102,257 @@
 
 > 计算向数据移动
 
-### 2.4.1. MapReduce框架概述
+### 2.4.1. MapReduce 框架概述
 
 - MapReduce:
   - Map
     - 接收传递来的数据
     - 提取数据特征
-    - 映射（map）成对应的中间级，key-value模式(由程序员自己设计)
+    - 映射（map）成对应的中间级，key-value 模式(由程序员自己设计)
   - Reduce
-    - 从Map接收k-v数据
+    - 从 Map 接收 k-v 数据
     - 数据处理，合并，精简（reduce）
     - 进行计算
-- 流程:输入(格式化k,v)数据集map映射成一个中间数据集(k,v)reduce (sql)
-  - 相同的key为一组，调用reduce方法，方法内迭代一组数据进行运算（类似sql）
-- hadoop 作用：将大量数据通过数据挖掘形成具有相同数据特征的多个组，然后通过MapReduce并行执行运算
-- 涉及运算：  
+- 流程:输入(格式化 k,v)数据集 map 映射成一个中间数据集(k,v)reduce (sql)
+  - 相同的 key 为一组，调用 reduce 方法，方法内迭代一组数据进行运算（类似 sql）
+- hadoop 作用：将大量数据通过数据挖掘形成具有相同数据特征的多个组，然后通过 MapReduce 并行执行运算
+- 涉及运算：
   - 比较
   - 排序
   - 遍历
   - ......
 
-### 2.4.2. MapReduce架构
+### 2.4.2. MapReduce 架构
 
 ![](./image/mapreduce-1.jpg)
 
 - 阶段一：切片
-  - 默认情况下一个map对应一个block。但往往块的数量要小于map数量
-  - block是物理上被切割出来的的文件，而split是逻辑上的片
-  - map和block没有直接对应，中间还有一个split，split和map一一对应
+  - 默认情况下一个 map 对应一个 block。但往往块的数量要小于 map 数量
+  - block 是物理上被切割出来的的文件，而 split 是逻辑上的片
+  - map 和 block 没有直接对应，中间还有一个 split，split 和 map 一一对应
     - 原因：
       - 数据量小的时候，没有问题
       - 数据量大的时候，一个块的计算就要花费很多时间（比如一年），尽管多个块并行计算，也会花费很多时间
-      - 因为块的大小已经物理固定，不能改变，所以提出了split（片）的概念
-      - 每个块多能切成多个片，再让每个片对应一个map
-      - 想要知道有多少个map，就要知道块的大小，所在位置，以及分片方式大小
-- 阶段二：map映射
-  - split数据交给map，map做中间级映射，成为`K-V型数据`
+      - 因为块的大小已经物理固定，不能改变，所以提出了 split（片）的概念
+      - 每个块多能切成多个片，再让每个片对应一个 map
+      - 想要知道有多少个 map，就要知道块的大小，所在位置，以及分片方式大小
+- 阶段二：map 映射
+  - split 数据交给 map，map 做中间级映射，成为`K-V型数据`
 - 阶段三：shuffler(洗牌)
-  - 将数据发给reduce，根据分区不同上传到不同reduce上（分区后面讲）
+  - 将数据发给 reduce，根据分区不同上传到不同 reduce 上（分区后面讲）
     > 涉及网络数据迁移
-  - 将key相同的数据merge起来
-  - 一个reduce可以处理多个key。一个key对应一个reduce。
+  - 将 key 相同的数据 merge 起来
+  - 一个 reduce 可以处理多个 key。一个 key 对应一个 reduce。
     > reduce-key：一对多<br>
-    > 注意：一个key不能分给多个reduce。所以需要处理最大数据量reduce就会称为执行时间的瓶颈<br>
+    > 注意：一个 key 不能分给多个 reduce。所以需要处理最大数据量 reduce 就会称为执行时间的瓶颈<br>
     > storm 没有这个问题
-- 阶段四：reduce进行计算
-  - 所有reduce并行计算
-  - **相同的key**数据调一次reduce
+- 阶段四：reduce 进行计算
+  - 所有 reduce 并行计算
+  - **相同的 key**数据调一次 reduce
 
 ### 2.4.3. 架构细节
 
 ![](./image/mapreduce-2.jpg)
 
-- split默认和block大小相同
+- split 默认和 block 大小相同
 - 映射细讲：
-  - split通过map映射为`k-v型数据`
-    - 每个reduce就是一个分区。
-    - 分区数量取决于人为设定的Reduce-Task数量
+  - split 通过 map 映射为`k-v型数据`
+    - 每个 reduce 就是一个分区。
+    - 分区数量取决于人为设定的 Reduce-Task 数量
     - 默认只有一个分区
-    - 每个key-value生成时，都会给定一个分区编号(partition)，分区编号与reduce相对应
-    - key:reduce为n:1，也就是说key:分区为n:1
-  - （map端，多个map并行处理）将k-v型数据处理
-    - 部分数据存入到内存的buffer（128MB）中,buffer中处理:
-      - 在buffer(128MB)中**根据分区编号**进行**数据粗排序** 
+    - 每个 key-value 生成时，都会给定一个分区编号(partition)，分区编号与 reduce 相对应
+    - key:reduce 为 n:1，也就是说 key:分区为 n:1
+  - （map 端，多个 map 并行处理）将 k-v 型数据处理
+    - 部分数据存入到内存的 buffer（128MB）中,buffer 中处理:
+      - 在 buffer(128MB)中**根据分区编号**进行**数据粗排序**
         > 目的是避免分发数据时每次都要重新遍历
-        - 比如1/3段为reduce1(对应key1,key2)的，中间1/3段为reduce2(对应key3)的，最后1/3段为reduce3(对应key4)的
-      - 将buffer的分区内部进行**二次排序**
-        > 目的是避免reduce数据时每次都要重新遍历（key相同的数据才能进行reduce）
-        - 比如reduce1中有两个key，是乱序的
-        - 需要将两个key分开
+        - 比如 1/3 段为 reduce1(对应 key1,key2)的，中间 1/3 段为 reduce2(对应 key3)的，最后 1/3 段为 reduce3(对应 key4)的
+      - 将 buffer 的分区内部进行**二次排序**
+        > 目的是避免 reduce 数据时每次都要重新遍历（key 相同的数据才能进行 reduce）
+        - 比如 reduce1 中有两个 key，是乱序的
+        - 需要将两个 key 分开
       - 对数据进行压缩（conbiner），数据简单处理
-        - 比如reduce会用到数据的和，在map端就可以完成处理，再把数据传递下去
-        - 减少io数据量交互
-      - 将处理完的数据输出为一个128MB的小文件
+        - 比如 reduce 会用到数据的和，在 map 端就可以完成处理，再把数据传递下去
+        - 减少 io 数据量交互
+      - 将处理完的数据输出为一个 128MB 的小文件
     - 重复操作，直到把所有数据处理完
     - 将所有小文件合并为一个大文件， 降低寻址难度
 - shuffler
-  - 所有map端与reduce端间上传数据，
-  - 在reduce端执行归并算法
+  - 所有 map 端与 reduce 端间上传数据，
+  - 在 reduce 端执行归并算法
     > 归并的话可以看看入门情景
-    - 因为不同map处理数据所需时间不同
-    - 所以先处理完的map上传的数据会进行归并。先到先处理
+    - 因为不同 map 处理数据所需时间不同
+    - 所以先处理完的 map 上传的数据会进行归并。先到先处理
     - 后来的后进行归并
-    - 但最终不一定都要归并为一个大文件（图中是归并为了一个大文件），这样会造成io流的浪费
+    - 但最终不一定都要归并为一个大文件（图中是归并为了一个大文件），这样会造成 io 流的浪费
     - 最终归并为若干个小文件也行，只要保证文件间有序即可
 
 ### 2.4.4. 示例
 
 ![](./image/word-statics.jpg)
 
-### 2.4.5. 其他
+### 2.4.5. 大纲总结与其他
 
 - 分区与分组
-  - 分区的目的是根据Key值决定Mapper的输出记录被送到哪一个Reducer上去处理。
-  - 分组就是与记录的Key相关。在同一个分区里面，具有相同Key值的记录是属于同一个分组的。
+
+  - 分区的目的是根据 Key 值决定 Mapper 的输出记录被送到哪一个 Reducer 上去处理。
+  - 分组就是与记录的 Key 相关。在同一个分区里面，具有相同 Key 值的记录是属于同一个分组的。
 
 - Map：
   - 读懂数据
-    > 程序员工作，自己确定k-v的标准
-  - 映射为KV模型
+    > 程序员工作，自己确定 k-v 的标准
+  - 映射为 KV 模型
   - 并行分布式
   - 计算向数据移动
-    > **将map-task和reduce-task移动到block块所在节点上**
+    > **将 map-task 和 reduce-task 移动到 block 块所在节点上**
 - Reduce：
   - 数据全量/分量加工（partition/group）
-  - Reduce中可以包含不同的key
-  - 相同的Key汇聚到一个Reduce中
-  - 相同的Key调用一次reduce方法
-    - 排序实现key的汇聚
-- K,V使用自定义数据类型
+  - Reduce 中可以包含不同的 key
+  - 相同的 Key 汇聚到一个 Reduce 中
+  - 相同的 Key 调用一次 reduce 方法
+    - 排序实现 key 的汇聚
+- K,V 使用自定义数据类型
   - 不支持基本类型
   - 作为参数传递，节省开发成本，提高程序自由度
     > 功能类似可变参数
-  - Writable序列化：使能分布式程序数据交互
-  - Comparable比较器：实现具体排序（字典序，数值序等
+  - Writable 序列化：使能分布式程序数据交互
+  - Comparable 比较器：实现具体排序（字典序，数值序等
 
 ### 2.4.6. 运行架构：计算向数据移动
 
-#### 2.4.6.1. 版本1.x
+#### 2.4.6.1. 版本 1.x
 
 ##### 2.4.6.1.1. 架构
 
 ![](./image/mapreduce-3.jpg)
 
 - client
+
   - 做所需要的规划，比如如何切片，如何分区，如何处理，处理什么。设计作业
-  - 做好后打成jar包，提交给hadoop集群中的hdfs的**NameNode**
-    > 不给 JobTracker是因为JobTracker单点，不安全。
-  - 最终作业提交到JobTracker
+  - 做好后打成 jar 包，提交给 hadoop 集群中的 hdfs 的**NameNode**
+    > 不给 JobTracker 是因为 JobTracker 单点，不安全。
+  - 最终作业提交到 JobTracker
 
 - JobTrakcer 任务调度：
-  - Job Tracker 和 Task Tracker 关系类似于 NameNode和DateNode关系
-  - Job Tracker是调度角色；Task Tracker是任务调度角色，辅助Job Tracker
-  - 当Job Trakcer接受到Client的任务指派后，会先从NameNode获得块的相关信息
+  - Job Tracker 和 Task Tracker 关系类似于 NameNode 和 DateNode 关系
+  - Job Tracker 是调度角色；Task Tracker 是任务调度角色，辅助 Job Tracker
+  - 当 Job Trakcer 接受到 Client 的任务指派后，会先从 NameNode 获得块的相关信息
   - 再指定相关节点开启 Task Trakcer
-  - Task Tracker主动询问Job Tracker开启 Map-Task和Reduce-Task
-    > 之所以不由Job Tracker来开启 Task 是因为压力太大，所以要分给 Task Tracker<br>
-    > 注意：Map和Reduce不再同一节点
-  - Task Tracker再从NameNode下载任务jar包到DataNode，读取再对数据进行计算  (**计算向数据移动**)
-  
+  - Task Tracker 主动询问 Job Tracker 开启 Map-Task 或 Reduce-Task
+    > 之所以不由 Job Tracker 来开启 Task 是因为压力太大，所以要分给 Task Tracker<br>
+    > 注意：Map 和 Reduce 不再同一节点
+  - Task Tracker 再从 NameNode 下载任务 jar 包到 DataNode，读取再对数据进行计算 (**计算向数据移动**)
 - JobTracker 资源管理：
-  - 想要开启Map-Task和Reduce-Task，就要确认节点上是否还有剩余资源（比如进程数，内存等）
-  - Task-Tracker会时刻监控节点的资源利用情况
-  - Job-Tracker会和Task_Tracker保持心跳，Task Tracker汇报资源状况
+  - 想要开启 Map-Task 和 Reduce-Task，就要确认节点上是否还有剩余资源（比如进程数，内存等）
+  - Task-Tracker 会时刻监控节点的资源利用情况
+  - Job-Tracker 会和 Task_Tracker 保持心跳，Task Tracker 汇报资源状况
 
 ##### 2.4.6.1.2. 示例流程：
 
 ![](./image/mapreduce-4.jpg)
+
 ![](./image/mapreduce-5.jpg)
 
-- 先map,再reduce
+- 先 map,再 reduce
 - 此处将最后结果交给了客户端，但不是必须的
   - 既可以存储起来
   - 也可以作为下一次的输入，不断迭代计算
 
-
 ##### 2.4.6.1.3. 大纲总结与问题：
-- MRv1角色：
+
+- MRv1 角色：
   - JobTracker
     - 核心，主，单点
     - 调度所有的作业
     - 监控整个集群的资源负载
+    - 获得任务 jar 包
   - TaskTracker
-    - 从，自身节点资源管理
-    - 和JobTracker心跳，汇报资源，获取Task
+    - 从节点，自身节点资源管理
+    - 和 JobTracker 心跳，汇报资源，获取 Task，开启 map 和 reduce
   - Client
     - 作业为单位
     - 规划作业计算分布
-    - 提交作业资源到HDFS
-    - 最终提交作业到JobTracker
+    - 提交作业资源到 HDFS
+    - 最终提交作业到 JobTracker
 - 弊端：
   - JobTracker：负载过重，单点故障
-  - 资源管理与计算调度强耦合，其他计算框架需要重复实现资源管理
-    > 比如storm也进来了，storm和mapreduce的资源管理不互相联系，可能会出现重复占用，布置失败，就要重新布置
+  - 资源管理与计算调度强耦合，job traker 属于 hadoop 计算框架，其他计算框架需要重复实现资源管理
+    > 比如 storm 也进来了，storm 和 mapreduce 的资源管理不互相联系，可能会出现重复占用，布置失败，就要重新布置
   - 不同框架对资源不能全局管理
 
-#### 2.4.6.2. 版本2.x
+#### 2.4.6.2. 版本 2.x
 
 ##### 2.4.6.2.1. 架构
 
 ![](./image/mapreduce-6.jpg)
 
-> 一切皆Container
-> 基于YARN的资源管理：Resource Manger + Node Manager + Container
+> 一切皆 Container
+> 基于 YARN 的资源管理：Resource Manger + Node Manager + Container
 
 - 大致流程:
-  - client把任务提交给 Resource Manager（相当于 Job Tracker中的资源管理功能）
-  - NodeManager一直主动向Resource Manager汇报节点状态信息。Resource Manager统计资源情况
-  - Resource Manger会寻找相对空闲的服务器开启Application Master进行任务调度
-    > Application Master负责任务切分、任务调度、任务监控和容错等
-  - Application Master获取块位置信息和任务作业，进行资源规划
-  - Application Master 向Resource Manger请求资源
-  - Resource Manager 允许请求，Application Master开启工作进程 
-    - Application Master进一步将资源分配给内部的任务
-  - Application Master在指定节点创建Container(默认1G)
-  - 在Container中创建 Map-task,Reduce-Task进行运算
-    > Container是为了防止占用太多空间。获取到数据后，可能会查询数据库做数据的拼接，数据量可能会变化，需要通过container限制
+  - client 把任务提交给 Resource Manager（相当于 Job Tracker 中的资源管理功能）
+  - NodeManager 一直主动向 Resource Manager 汇报节点状态信息。Resource Manager 统计资源情况
+  - Resource Manger 会寻找相对空闲的服务器开启 Application Master 进行任务调度
+    > Application Master 负责任务切分、任务调度、任务监控和容错等
+  - Application Master 获取块位置信息和任务作业，进行资源规划
+  - Application Master 向 Resource Manger 请求资源
+  - Resource Manager 允许请求，Application Master 开启工作进程
+    - Application Master 进一步将资源分配给内部的任务
+  - Application Master 在指定节点创建 Container(默认 1G)
+  - 在 Container 中创建 Map-task,Reduce-Task 进行运算
+    > Container 是为了防止占用太多空间。获取到数据后，可能会查询数据库做数据的拼接，数据量可能会变化，需要通过 container 限制
     > 同时利于资源规划
 
 ##### 2.4.6.2.2. 细节：
 
-- Resource Manager 实现了高可用，通过zookeeper维护
+- Resource Manager 实现了高可用，通过 zookeeper 维护
 - 长服务与短服务：
   - 集群搭建一开始到最后一直开启的，是长服务
   - 反则就是短服务
-- Application Master是短服务，只有在提交任务时，临时生成的服务，不需要搭建。一个MapRaduce作业，对应一个 Application Master进程，也就是说一个几点上不止一个
+- Application Master 是短服务，只有在提交任务时，临时生成的服务，不需要搭建。一个 MapRaduce 作业，对应一个 Application Master 进程，也就是说一个几点上不止一个
 - Application Master 容错：
-  - 失败后，由YARN重新启动
-  - 任务失败后，MRAppMaster重新申请资源
-
+  - 失败后，由 YARN 重新启动
+  - 任务失败后，MRAppMaster 重新申请资源
 
 ##### 2.4.6.2.3. 流程示例：
 
 ![](./image/mapreduce-7.jpg)
 
-> 该图有和spark对比，所以看看就行，之后再仔细看
+> 该图有和 spark 对比，所以看看就行，之后再仔细看
 
 - Executor:一个线程
 - Worker：相当于进程
 
+##### 2.4.6.2.4. 大纲总结与其他
 
-##### 2.4.6.2.4. 大纲总结
+- YARN 简介：
 
-- YARN简介：  
   - YARN：Yet Another Resource Negotiator；
-  - Hadoop 2.0新引入的资源管理系统，直接从MRv1演化而来的；
-    - 核心思想：将MRv1中JobTracker的资源管理和任务调度两个功能分开，分别由ResourceManager和ApplicationMaster进程实现
+  - Hadoop 2.0 新引入的资源管理系统，直接从 MRv1 演化而来的；
+    - 核心思想：将 MRv1 中 JobTracker 的资源管理和任务调度两个功能分开，分别由 ResourceManager 和 ApplicationMaster 进程实现
     - ResourceManager：负责整个集群的资源管理和调度
     - ApplicationMaster：负责应用程序相关的事务，比如任务调度、任务监控和容错等
-  - YARN的引入，使得多个计算框架可运行在一个集群中
-    - 每个应用程序对应一个ApplicationMaster
-    - 目前多个计算框架可以运行在YARN上，比如MapReduce、Spark、Storm等
+  - YARN 的引入，使得多个计算框架可运行在一个集群中
+    - 每个应用程序对应一个 ApplicationMaster
+    - 目前多个计算框架可以运行在 YARN 上，比如 MapReduce、Spark、Storm 等
 
 - YARN：解耦资源与计算
   - ResourceManager
     - 主，核心
     - 集群节点资源管理
   - NodeManager
-    - 与RM汇报资源
-    - 管理Container生命周期
-    - 计算框架中的角色都以Container表示
-  - Container：【节点NM，CPU,MEM,I/O大小，启动命令】
-    - 默认NodeManager启动线程监控Container大小，**超出申请资源额度，kill**
-    - 支持Linux内核的Cgroup
+    - 与 RM 汇报资源
+    - 管理 Container 生命周期
+    - 计算框架中的角色都以 Container 表示
+  - Container：【节点 NM，CPU,MEM,I/O 大小，启动命令】
+    - 默认 NodeManager 启动线程监控 Container 大小，**超出申请资源额度，kill**
+    - 支持 Linux 内核的 Cgroup
 - MR ：
   - MR-ApplicationMaster-Container
     - 作业为单位，避免单点故障，负载到不同的节点
-    - 创建Task需要和RM申请资源（Container  /MR 1024MB）
+    - 创建 Task 需要和 RM 申请资源（Container /MR 1024MB）
   - Task-Container
 - Client：
-  - RM-Client：请求资源创建AM
-  - AM-Client：与AM交互
-- MapTask/ReduceTask：任务驱动引擎，与MRv1一致
+  - RM-Client：请求资源创建 AM
+  - AM-Client：与 AM 交互
+- MapTask/ReduceTask：任务驱动引擎，与 MRv1 一致
