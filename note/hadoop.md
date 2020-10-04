@@ -536,7 +536,7 @@
 - 熟练完成伪分布式 hadoop 的安装，测试创建目录、上传、删除文件
 - 测试角色进程版本号不一致现象并给出解决方案。
 
-## 2.3. 分布式集群
+## 2.3. HDFS 分布式集群
 
 ### 2.3.1. hadoop1.0 集群搭建
 
@@ -1356,3 +1356,221 @@
   - RM-Client：请求资源创建 AM
   - AM-Client：与 AM 交互
 - MapTask/ReduceTask：任务驱动引擎，与 MRv1 一致
+
+## 2.5. MR 分布式集群
+
+### 2.5.1. 搭建
+
+- 参考文档
+  [搭建文档 YARN/ResourceManager HA](https://hadoop.apache.org/docs/r2.6.5/hadoop-yarn/hadoop-yarn-site/ResourceManagerHA.html)
+  [单节点文档 Generral/Single Node Setup 下 YARN on Single Node](https://hadoop.apache.org/docs/r2.6.5/hadoop-project-dist/hadoop-common/SingleCluster.html)
+
+- 搭建目标：
+
+|          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RS  | NM  |
+| :------: | :--: | :--: | :-: | :-: | :--: | :-: | :-: | :-: |
+| Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |
+| Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |
+| Node0003 |      |      | \*  | \*  |      | \*  | \*  | \*  |
+| Node0004 |      |      | \*  | \*  |      |     | \*  | \*  |
+
+- 搭建过程
+
+  - `vi mapred-site.xml`
+    ```xml
+    <configuration>
+        <property>
+            <name>mapreduce.framework.name</name>
+            <value>yarn</value>
+             <!-- 使用yarn作为资源管理框架 -->
+        </property>
+    </configuration>
+    ```
+  - `vi yarn-site.xml`
+
+    ```xml
+    <configuration>
+        <property>
+            <name>yarn.nodemanager.aux-services</name>
+            <value>mapreduce_shuffle</value>
+            <!-- shuffle阶段也归于yarn管理 -->
+
+             <property>
+                <name>yarn.resourcemanager.ha.enabled</name>
+                <!-- 开启yarn高可用 -->
+                <value>true</value>
+              </property>
+              <property>
+                <name>yarn.resourcemanager.cluster-id</name>
+                <!-- Resourcemanager　id标识 不用改 -->
+                <value>cluster1</value>
+              </property>
+              <property>
+                <name>yarn.resourcemanager.ha.rm-ids</name>
+                <!-- 主备Resourcemanager 逻辑名称 -->
+                <value>rm1,rm2</value>
+              </property>
+              <property>
+                <name>yarn.resourcemanager.hostname.rm1</name>
+                <!-- ResourceManager 节点 -->
+                <value>node0003</value>
+              </property>
+              <property>
+                <name>yarn.resourcemanager.hostname.rm2</name>
+                <!-- ResourceManager 节点 -->
+                <value>node0004</value>
+              </property>
+              <property>
+                <name>yarn.resourcemanager.zk-address</name>
+                <value>node0002:2181,node0003:2181,node0004:2181</value>
+              </property>
+        </property>
+    </configuration>
+    ```
+
+  - 分发两个配置文件到其他节点
+  - node0003,node0004 之间**互相**免密钥登录（因为涉及到 ResourceManager 的切换）
+  - 开启 zookeeper
+  - 开启 hadoop,`start-dfs.sh`
+  - NodeManager 会自动在 DataNode 节点启动
+  - ResourceManager 必须在配置节点手动启动：
+    - node0003:`yarn-daemon.sh start resourcemanager`
+    - node0004:`yarn-daemon.sh start resourcemanager`
+  - ss -nal 查看 socket 通信端口
+    - 3888：zookeeper 选举端口
+    - 2888：zookeeper 主从节点通信端口
+    - 2181：zookeeper 服务器和客户端通信端口
+    - 8088：ResourceManager 的 web 管理页面端口
+  - 进入 node0003:8088 或 node0004:8088
+    - 查看 ActiveNodes 个数，可能要等一段时间才会变化
+  - 测试程序：
+    - /share/hadoop 目录
+    - hadoop-mapreduce-example 包，示例 job 任务
+    - node0001 下，cd 到该目录，执行：`hadoop jar hadoop-mapreduce-example-2.6.5.jar wordcount /user/root/test.txt /wordcount`
+      - wordcount:是 jar 包中的 job 名称
+      - /user/root/test.txt：hdfs 中处理文件位置
+      - /wordcount：hdfs 中结果储存位置。路径可以没有，如果有，必须要保证，该路径下没有文件
+    - 此时进入 node0003:8088，点击左侧 Applications，可以发现 job 任务
+    - 在 node0001 `hdfs dfs -cat /wordcount/part-r-00000`，查看计算结果
+      - 00000 是分区号，不设置默认一个 00000
+
+- 关闭：
+  - 关闭 yarn
+    - node0003:`yarn-daemon.sh stop resourcemanager`
+    - node0004:`yarn-daemon.sh stop resourcemanager`
+  - 关闭 hadoop：`stop-all.sh`
+  - 关闭 zookeeper：`zkServer.sh stop`
+
+### 2.5.2. window 端 java 实现作业分发
+
+- 将四个配置文件拷贝到项目所在路径
+  - core-site.xml
+  - hdfs-site.xml
+  - mapred-site.xml
+  - yarn-site.xml
+- 创建 MyWordCount.java
+
+  ```java
+  // 创建配置项
+  Configuration conf = new Configuration();
+
+  // 创建job
+  Job job = Job.getInstance(conf);
+  // 指定入口类
+  job.getJarByClass(MyJob.class);
+
+  // 指定作业名称（可选）
+  job.setJobName("myJob");
+
+  // org.apache.hadoop.mapreduce.lib.input
+  // 另一个同名的是1.0版本的
+  // 设置输入
+  Path inPath = new Path("/user/root/test.txt"); // hdfs目录
+  FileInputFormat.addInputFormat(job,inPath);
+
+  // 如果输出路径存在，就删除
+  if(outPath.getFileSystem(conf).exists(outPath)){
+    outPath.getFileSystem(conf).delete(outPath,true);
+  }
+
+  // 设置输出
+  Path outPath = new Path("/output/wordcount");
+  FileOutputFormat.setOutputPath(job,outPath);
+
+  // 手动创建 MyMapper.class,MyReducer.class
+  job.setMapperClass(MyMapper.class);
+  // 告知reduc，map输出的数据类型，否则reduce无法反序列化，会报错
+  job.setMapOutputKeyClass(Text.class);
+  job.setoutputValueClass(IntWritable.class);
+  job.setReducerClass(MyReducer.class);
+
+  // 提交job作业
+  job.waitForCompletion(true);
+  ```
+
+- 创建 MyMapper.java
+  ```java
+  // Mapper泛型  keyIn valueIN keyOut valueOut，输入输出都是k-v类型
+  // 默认keyIn:一行首字符的下标索引 valueIn:一行的内容
+  // 注意：不支持基本类型，String类型用Text代替，int用IntWritable代替
+  public class MyMapper Extends Mapper<Object,Text,Text,IntWritable>{
+    private final static IntWritable one = new IntWritable(1); // 每次计数为1
+    private Text word = new Text();
+    // 每行执行一次map方法
+    public void map(Object key,Text value,Context context) throws IoException,InterruptedException{
+      StringTokenizer itr = StringTokenizer(value.toString()); // 将字符串放到迭代器中
+      // 通过迭代器对字符串进行切割
+      while(itr.hasMoreTokens()){
+        // itr.nextToken() 返回String，此处将String封装到Text中
+        word.set(itr.nextToken());
+        context.write(word,one);
+        // 将单词装到context中，每次计数为1
+        // word 对应keyOut,one对应 valueOut
+        // 最后输出形式：
+        // hello 1
+        // hadoop 1
+        // hello 1
+        // hello 1
+        // ...
+      }
+    }
+  }
+  ```
+- 创建 MyReducer.java
+
+  ```java
+  // keyIn:从map端来，为Text
+  // ValueIn:word计数，为IntWritable
+  // keyOut:输出到文件的类型，单词本身，Text
+  // valueOut:输出到文件的类型，单词的出现次数，IntWritable
+  public class MyReducer extends Reducer<Object,IntWritable,Text,IntWritable>{
+    private IntWritable result = new IntWritable ( ) ;
+    // 这里是 key 和 values ，也就是一个key下多个value。和reduce同一个key为一组，计算一次相符合。
+    // 每个key执行一遍该方法，进行一次迭代
+    public void reduce(Key, key, Iterable<IntWritable> values,
+                      Context context) throws IOException, InterruptedException {
+      int sum = 0;
+      for(IntWritable val:values){
+        // 这里的val都为1，进行累加运算
+        sum+=val.get();
+      }
+      result.set(sum);
+      context.write(key,result);
+  }
+  ```
+
+- 打成 jar
+- 执行（要使用全类名）
+  > :jar 中指定了文件路径，所以不需要在指令中指定
+
+## 2.6. 源码分析
+
+### 客户端源码
+
+### map 端
+
+#### map in
+
+#### map out
+
+### reduce 端
