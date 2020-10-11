@@ -1463,70 +1463,73 @@
 
 ### 2.5.2. window 端 java 实现作业分发
 
+> **※重要**
+
 - 将四个配置文件拷贝到项目所在路径
   - core-site.xml
   - hdfs-site.xml
   - mapred-site.xml
   - yarn-site.xml
 - 创建 MyWordCount.java
-
+  > 单词统计项目
   ```java
-  // 创建配置项
-  Configuration conf = new Configuration();
+  public class MyWordCount {
+      public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
+          Configuration conf = new Configuration();
+          Job job = Job.getInstance();
 
-  // 创建job
-  Job job = Job.getInstance(conf);
-  // 指定入口类
-  job.getJarByClass(MyJob.class);
+          job.setJarByClass(MyWordCount.class);
 
-  // 指定作业名称（可选）
-  job.setJobName("myJob");
+          job.setJobName("MyWordCount");
 
-  // org.apache.hadoop.mapreduce.lib.input
-  // 另一个同名的是1.0版本的
-  // 设置输入
-  Path inPath = new Path("/user/root/test.txt"); // hdfs目录
-  FileInputFormat.addInputFormat(job,inPath);
+          // hdfs目录
+          Path inPath = new Path("/user/root/test.txt");
+          Path outPath = new Path("/output/wordcount");
 
-  // 如果输出路径存在，就删除
-  if(outPath.getFileSystem(conf).exists(outPath)){
-    outPath.getFileSystem(conf).delete(outPath,true);
+          // 给job添加要处理文件的文件路径
+          FileInputFormat.addInputPath(job,inPath);
+
+          // 如果输出路径存在，就删除
+          if(outPath.getFileSystem(conf).exists(outPath)){
+              outPath.getFileSystem(conf).delete(outPath,true);
+          }
+
+          // 给job设置结果输出的路径
+          FileOutputFormat.setOutputPath(job,outPath);
+          // 手动创建 MyMapper.class,MyReducer.class
+          job.setMapperClass(MyMapper.class);
+
+          // 告知reduce，map输出的数据类型，否则reduce无法反序列化，会报错
+          job.setMapOutputKeyClass(Text.class);
+          job.setMapOutputValueClass(IntWritable.class);
+          job.setReducerClass(MyReducer.class);
+
+          // Submit the job, then poll for progress until the job is complete
+          job.waitForCompletion(true);
+      }
   }
-
-  // 设置输出
-  Path outPath = new Path("/output/wordcount");
-  FileOutputFormat.setOutputPath(job,outPath);
-
-  // 手动创建 MyMapper.class,MyReducer.class
-  job.setMapperClass(MyMapper.class);
-  // 告知reduc，map输出的数据类型，否则reduce无法反序列化，会报错
-  job.setMapOutputKeyClass(Text.class);
-  job.setoutputValueClass(IntWritable.class);
-  job.setReducerClass(MyReducer.class);
-
-  // 提交job作业
-  job.waitForCompletion(true);
   ```
 
 - 创建 MyMapper.java
   ```java
   // Mapper泛型  keyIn valueIN keyOut valueOut，输入输出都是k-v类型
   // 默认keyIn:一行首字符的下标索引 valueIn:一行的内容
-  // 注意：不支持基本类型，String类型用Text代替，int用IntWritable代替
+  // 注意：不支持基本类型，String类型用Text代替，int用IntWritable代替，long用LongWritable代替
   public class MyMapper Extends Mapper<Object,Text,Text,IntWritable>{
+    // Mapper中的run方法会循环调用map方法，所以把这个变量声明为类属性，避免多次创建
     private final static IntWritable one = new IntWritable(1); // 每次计数为1
     private Text word = new Text();
     // 每行执行一次map方法
     public void map(Object key,Text value,Context context) throws IoException,InterruptedException{
-      StringTokenizer itr = StringTokenizer(value.toString()); // 将字符串放到迭代器中
+      StringTokenizer itr = new StringTokenizer(value.toString()); // 将字符串放到迭代器中
       // 通过迭代器对字符串进行切割
       while(itr.hasMoreTokens()){
         // itr.nextToken() 返回String，此处将String封装到Text中
         word.set(itr.nextToken());
         context.write(word,one);
-        // 将单词装到context中，每次计数为1
+        // 将k-v写入到context容器中，key为word，value为1
         // word 对应keyOut,one对应 valueOut
-        // 最后输出形式：
+        // 最后转换的k-v形式为：
         // hello 1
         // hadoop 1
         // hello 1
@@ -1539,23 +1542,28 @@
 - 创建 MyReducer.java
 
   ```java
-  // keyIn:从map端来，为Text
-  // ValueIn:word计数，为IntWritable
-  // keyOut:输出到文件的类型，单词本身，Text
-  // valueOut:输出到文件的类型，单词的出现次数，IntWritable
-  public class MyReducer extends Reducer<Object,IntWritable,Text,IntWritable>{
-    private IntWritable result = new IntWritable ( ) ;
-    // 这里是 key 和 values ，也就是一个key下多个value。和reduce同一个key为一组，计算一次相符合。
-    // 每个key执行一遍该方法，进行一次迭代
-    public void reduce(Key, key, Iterable<IntWritable> values,
-                      Context context) throws IOException, InterruptedException {
-      int sum = 0;
-      for(IntWritable val:values){
-        // 这里的val都为1，进行累加运算
-        sum+=val.get();
+  /**
+  * keyIn:从map端来，为Text
+  * ValueIn:word计数，为IntWritable
+  * keyOut:输出到文件的类型，单词本身，Text
+  * valueOut:输出到文件的类型，单词的出现次数，IntWritable
+  */
+  public class MyReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
+      private IntWritable result = new IntWritable();
+
+      // 这里是 key 和 values（注意不是value，多个s） ，
+      // 也就是一个key下多个value。和reduce同一个key为一组，计算一次相符合。
+      // 每个key执行一遍该方法，进行一次迭代
+      public void reduce(Text key, Iterable<IntWritable> values,
+                        Context context) throws IOException, InterruptedException {
+          int sum = 0;
+          for (IntWritable val : values) {
+              // 这里的val都为1，进行累加运算
+              sum += val.get();
+          }
+          result.set(sum);
+          context.write(key, result);
       }
-      result.set(sum);
-      context.write(key,result);
   }
   ```
 
@@ -1565,12 +1573,88 @@
 
 ## 2.6. 源码分析
 
-### 客户端源码
+split读取方式，解决行的分割
 
-### map 端
+环装缓冲区。k-v 和 分区信息
 
-#### map in
+### 2.6.1. 客户端源码
 
-#### map out
 
-### reduce 端
+
+### 2.6.2. map 端
+
+#### 2.6.2.1. map in
+
+#### 2.6.2.2. map out
+
+### 2.6.3. reduce 端
+
+- 二次排序：在不改变原本顺序的前提下,重新界定边界
+  ```
+  假设map端一开始按照省份排序（hb:河北，xt：邢台）
+  hb.xt
+  hb.xt
+  ln.sy
+  ln.dl
+
+  到了reduce端要按照市排序：
+  那么边界界定：
+  hb.xt
+  hb.xt
+  ----------
+  ln.sy
+  ----------
+  ln.dl
+  ----------
+  ```
+
+## 2.7. 案例
+
+### 2.7.1. 最高气温
+
+- 情景：
+  ```
+  找出每月气温最高的两天
+  
+  数据： 年-月-日 时-分-秒 温度
+  如: 2000-12-02 12:13:14 35c
+  ```
+- 过程：
+  ```
+  键值对转换形式：年月-气温
+  同一天不同时间的气温，只取最高的
+  同年月 为一组
+  map端，做好每组（就是一个月）的气温排序
+  ```
+- 实现：`src/hadoop/tq`
+  - **以MyTQ为主线**
+
+## 2.8. 推荐好友的好友
+
+- 情景：
+  > ![](./image/2020-10-11-14-51-35.png)
+  - 推荐共同好友多的间接好友
+  - 示例数据（同上图）：
+    ```
+    tom hello hadoop cat    # tom 直接好友有 hello hadoop cat。另外注意，hello和hadoop至少有间接好友关系，是否有直接关系需要查看下面数据
+    world hadoop hello hive
+    cat tom hive
+    mr hive hello
+    hive cat hadoop world hello mr
+    hadoop tom hive world
+    hello tom world hive mr
+    ```
+- 思路：
+  - 推荐者和被推荐者一定有一个或多个共同好友
+  - 全局寻找好友列表中两两关系
+    - key-value: name1,name2-0/1
+      - 直接好友：0
+      - 间接好友：1
+    - 注意 name1,name2 和 name2,name1 的处理。 
+  - 去除直接好友
+  - 统计两两关系出现次数
+- api：
+  - map：按好友列表输出两两关系
+  - reduce：sum两两关系
+  - 再设计一个MR
+  - 生成详细报表
