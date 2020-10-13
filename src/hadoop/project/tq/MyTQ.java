@@ -38,15 +38,16 @@ public class MyTQ {
         job.setMapOutputKeyClass(Tq.class);
         job.setMapOutputValueClass(IntWritable.class);
 
-        // 4. 自定义比较器
-        // 4.1实现TsortComparator
+        // 4. 自定义比较器，在map端进行排序
+        // 4.1实现TSortComparator
         // 4.2配置
         job.setSortComparatorClass(TSortComparator.class);
 
         // 设置reduce数量
         job.setNumReduceTasks(2);
 
-        //5 设置分区器,定义数据分发策略，默认hash取模（看源码）
+        // 5 设置分区器,定义数据分发策略，默认hash取模（看源码）
+        // 单分区的话不需要设置
         // 5.1 自定义分区器
         // 5.2 配置
         job.setPartitionerClass(TPartitioner.class);
