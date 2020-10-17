@@ -1371,7 +1371,7 @@
 
 - 搭建目标：
 
-|          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RS  | NM  |
+|          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RM  | NM  |
 | :------: | :--: | :--: | :-: | :-: | :--: | :-: | :-: | :-: |
 | Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |
 | Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |
@@ -1393,52 +1393,58 @@
   - `vi yarn-site.xml`
 
     ```xml
-    <configuration>
-        <property>
-            <name>yarn.nodemanager.aux-services</name>
-            <value>mapreduce_shuffle</value>
-            <!-- shuffle阶段也归于yarn管理 -->
+     <?xml version="1.0"?>
+     <!--
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
 
-             <property>
-                <name>yarn.resourcemanager.ha.enabled</name>
-                <!-- 开启yarn高可用 -->
-                <value>true</value>
-              </property>
-              <property>
-                <name>yarn.resourcemanager.cluster-id</name>
-                <!-- Resourcemanager　id标识 不用改 -->
-                <value>cluster1</value>
-              </property>
-              <property>
-                <name>yarn.resourcemanager.ha.rm-ids</name>
-                <!-- 主备Resourcemanager 逻辑名称 -->
-                <value>rm1,rm2</value>
-              </property>
-              <property>
-                <name>yarn.resourcemanager.hostname.rm1</name>
-                <!-- ResourceManager 节点 -->
-                <value>node0003</value>
-              </property>
-              <property>
-                <name>yarn.resourcemanager.hostname.rm2</name>
-                <!-- ResourceManager 节点 -->
-                <value>node0004</value>
-              </property>
-              <property>
-                <name>yarn.resourcemanager.zk-address</name>
-                <value>node0002:2181,node0003:2181,node0004:2181</value>
-              </property>
-        </property>
-    </configuration>
+         http://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License. See accompanying LICENSE file.
+     -->
+     <configuration>
+      <property>
+          <name>yarn.nodemanager.aux-services</name>
+          <value>mapreduce_shuffle</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.ha.enabled</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.cluster-id</name>
+        <value>cluster1</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.ha.rm-ids</name>
+        <value>rm1,rm2</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.hostname.rm1</name>
+        <value>node0003</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.hostname.rm2</name>
+        <value>node0004</value>
+      </property>
+      <property>
+        <name>yarn.resourcemanager.zk-address</name>
+        <value>node0002:2181,node0003:2181,node0004:2181</value>
+      </property>
+     </configuration>
     ```
 
   - 分发两个配置文件到其他节点
   - node0003,node0004 之间**互相**免密钥登录（因为涉及到 ResourceManager 的切换）
   - 开启 zookeeper
   - 开启 hadoop,`start-dfs.sh`
-  - NodeManager 会自动在 DataNode 节点启动
+  - 开启 namenode:`start-yarn.sh`
   - ResourceManager **必须在配置节点手动启动**：
-    > 或者在 ResourceManager 所在节点执行 `start-all.sh`（两个 ResourManager 免密钥基础上）
     - node0003:`yarn-daemon.sh start resourcemanager`
     - node0004:`yarn-daemon.sh start resourcemanager`
   - ss -nal 查看 socket 通信端口
@@ -1583,6 +1589,8 @@
   > :jar 中指定了文件路径，所以不需要在指令中指定
 
 ## 2.6. MR 源码分析
+
+> 详见 blog
 
 MapReduce 就是一个计算框架，对数据源没有要求，不管是文本数据还是数据库数据都没问题。输入输出最主要就在 InputFormat 和 OutputFormat 两个类
 
@@ -1772,7 +1780,7 @@ split 读取方式，解决行的分割
 
 ### 2.7.5. itemcf
 
-# 3. hive
+# 3. hive 数据仓库
 
 ## 3.1. 现状
 
@@ -1786,13 +1794,15 @@ split 读取方式，解决行的分割
 
 ## 3.2. hive 简介
 
-```
-wiki:
+- 数据仓库定义：
 
-数据仓库是一种信息系统的资料存储理论，此理论强调利用某些特殊资料存储方式，让所包含的资料，特别有利于分析处理，以产生有价值的信息并依此作决策。
+  ```
+  wiki:
 
-利用数据仓库方式所存放的资料，具有一但存入，便不随时间而更动的特性，同时存入的资料必定包含时间属性，通常一个数据仓库皆会含有大量的历史性资料，并利用特定分析方式，自其中发掘出特定信息。
-```
+  数据仓库是一种信息系统的资料存储理论，此理论强调利用某些特殊资料存储方式，让所包含的资料，特别有利于分析处理，以产生有价值的信息并依此作决策。
+
+  利用数据仓库方式所存放的资料，具有一但存入，便不随时间而更动的特性，同时存入的资料必定包含时间属性，通常一个数据仓库皆会含有大量的历史性资料，并利用特定分析方式，自其中发掘出特定信息。
+  ```
 
 - hive 数据仓库
   - Hive 的产生：
@@ -1892,7 +1902,15 @@ wiki:
 
 ## 3.4. hive 搭建模式
 
+[官网 getstart](https://cwiki.apache.org/confluence/display/Hive/GettingStarted)
+
+> 查看大致搭建过程
+
+[具体文档](https://cwiki.apache.org/confluence/display/HIVE#Home-AdministratorDocumentation)
+
 ### 3.4.1. 模式一：本地模式
+
+#### 3.4.1.1. 架构
 
 此模式连接到一个 In-memory 的数据库 Derby，Derby 是一个内存数据库，用来保存元数据信息。只需要一台服务器即可。
 
@@ -1903,39 +1921,7 @@ hdfs 用来保存数据库中表的信息，以文本数据形式存储。
 
 mete store Client：存储 metadata 的 hive 客户端
 
-### 3.4.2. 模式二：单用户模式
-
-通过网络连接到一个数据库中，是最经常使用到的模式，数据库用来保存元数据信息。需要两台服务器。
-
-hdfs 用来保存数据库中表的信息，以文本数据形式存储。
-其中想显示分隔符需要通过`cat -A file`
-
-![](./image/2020-10-13-09-30-16.png)
-
-![](./image/2020-10-12-20-30-43.png)
-
-耦合性高，更改数据库的话，也需要修改 hive 的元数据
-
-### 3.4.3. 模式三：远程服务器模式
-
-用于非 Java 客户端访问元数据库，在服务器端启动 MetaStoreServer，客户端利用 Thrift 协议通过 MetaStoreServer 访问元数据库。需要三台服务器。
-
-hdfs 用来保存数据库中表的信息，以文本数据形式存储。
-其中想显示分隔符需要通过`cat -A file`
-
-![](./image/2020-10-12-20-34-53.png)
-
-多了一个 metastore serve（元数据服务），由该服务维护元数据，hive 只用连接即可，起到解耦作用
-
-## 3.5. 搭建过程：
-
-[官网 getstart](https://cwiki.apache.org/confluence/display/Hive/GettingStarted)
-
-> 查看大致搭建过程
-
-[具体文档](https://cwiki.apache.org/confluence/display/HIVE#Home-AdministratorDocumentation)
-
-### 3.5.1. 模式一：本地模式
+#### 3.4.1.2. 搭建
 
 - 修改 hive-site.xml
 
@@ -1983,7 +1969,22 @@ java.sql.SQLException: Failed to start database 'metastore_db', see the next exc
 FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTask
 ```
 
-### 3.5.2. 模式二：单用户模式
+### 3.4.2. 模式二：单用户模式
+
+#### 3.4.2.1. 架构
+
+通过网络连接到一个数据库中，是最经常使用到的模式，数据库用来保存元数据信息。需要两台服务器。
+
+hdfs 用来保存数据库中表的信息，以文本数据形式存储。
+其中想显示分隔符需要通过`cat -A file`
+
+![](./image/2020-10-13-09-30-16.png)
+
+![](./image/2020-10-12-20-30-43.png)
+
+耦合性高，更改数据库的话，也需要修改 hive 的元数据
+
+#### 3.4.2.2. 搭建
 
 - node0001 上安装 mysql
   - `yum install mysql-server`
@@ -2063,8 +2064,31 @@ FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTa
   - 里面有元数据的表。
     > **注意：mysql 只存储元数据，表数据在 hdfs 中**
 
-### 3.5.3. 模式三
+### 3.4.3. 模式三：远程服务器模式
 
+#### 3.4.3.1. 架构
+
+用于非 Java 客户端访问元数据库，在服务器端启动 MetaStoreServer，客户端利用 Thrift 协议通过 MetaStoreServer 访问元数据库。需要三台服务器。
+
+hdfs 用来保存数据库中表的信息，以文本数据形式存储。
+其中想显示分隔符需要通过`cat -A file`
+
+![](./image/2020-10-12-20-34-53.png)
+
+多了一个 metastore serve（元数据服务），由该服务维护元数据，hive 只用连接即可，起到解耦作用
+
+#### 3.4.3.2. 搭建（实操）
+
+- 搭建目标：
+
+|          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RM  | NM  | mysql | mate store | hive |
+| :------: | :--: | :--: | :-: | :-: | :--: | :-: | :-: | :-: | :---: | :--------: | :--: |
+| Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |  \*   |            |      |
+| Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |       |            |      |
+| Node0003 |      |      | \*  | \*  |      | \*  | \*  | \*  |       |     \*     |      |
+| Node0004 |      |      | \*  | \*  |      |     | \*  | \*  |       |            |  \*  |
+
+- 仿照上方设置好 mysql
 - 开启 hadoop 相关
   - zookeeper
   - hdfs
@@ -2088,7 +2112,7 @@ FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTa
     <property>
       <name>javax.jdo.option.ConnectionURL</name>
       <!-- 自动创建数据库 -->
-      <value>jdbc:mysql://localhost/hive_remote?createDatabaseIfNotExist=true</value>
+      <value>jdbc:mysql://node0002/hive_remote?createDatabaseIfNotExist=true</value>
     </property>
 
     <property>
@@ -2115,17 +2139,15 @@ FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTa
     <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 
     <configuration>
-    <property>
-      <name>hive.metastore.warehouse.dir</name>
-      <value>/user/hive/warehouse</value>
-      <!-- mysql表文件在hdfs中的存放位置 -->
-    </property>
-
-    <property>
-      <name>hive.metastore.uris</name>
-      <value>thrift://node0003:9908</value>
-    </property>
+        <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://node0003:9083</value>
+        <!-- 端口不正确的话，开启服务前后各执行 ss -nal 一次，查看输出变化，确定服务端口开启位置。 -->
+        </property>
+    </configuration>
     ```
+
+- node0003,node0004 将 jdbc 连接 jar 包复制到 `$HIVE_HOME/lib`
 
 - node0003:`hive --service metastore`
   - 阻塞式窗口
@@ -2139,13 +2161,13 @@ FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTa
 node0004 配置文件中只有一个thrift连接，所以会连接上元数据服务，不会再本地启动
 ```
 
-## 3.6. hive sql
+## 3.5. hive sql
 
 [文档](https://cwiki.apache.org/confluence/display/Hive/LanguageManual)
 
 > 可能会有 values\_\_tmp_table ，只是查询数据时产生的临时表，不用管
 
-### 3.6.1. 分隔符相关
+### 3.5.1. 分隔符相关
 
 > hdfs 中的数据都以纯文本形式存储，所以必须使用
 
@@ -2156,9 +2178,11 @@ node0004 配置文件中只有一个thrift连接，所以会连接上元数据�
   - 同理还有 ^B,^C 等等
   - 分别对应 \u0001 \u0002 \u0003
 
-### 3.6.2. DDL
+### 3.5.2. DDL
 
-#### 3.6.2.1. 语法
+[文档](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL)
+
+#### 3.5.2.1. 语法
 
 除了数据类型有些区别，其他相同
 
@@ -2253,7 +2277,7 @@ constraint_specification:
     [, CONSTRAINT constraint_name CHECK [check_expression] ENABLE|DISABLE NOVALIDATE RELY/NORELY ]
 ```
 
-#### 3.6.2.2. 示例
+#### 3.5.2.2. 示例
 
 ```
 已有数据
@@ -2279,7 +2303,7 @@ create table psn(
   likes array<string>,
   address map<string,string>
 )
-row format delimited
+row format delimited -- 声明该句，指定使用分隔符读取（后面就有正则方式读取）
 fields terminated by ','  -- 字段分隔符
 -- 默认为 fields terminated by '\001'
 -- \001 即 \u0001
@@ -2298,27 +2322,31 @@ desc formatted psn -- 查看表结构
 
 -- Hive does not do any transformation while loading data into tables.
 -- Load operations are currently pure copy/move operations that move datafiles into locations corresponding to Hive tables.
-load data local inpath '~/data/data' into table psn -- 加载数据
+load data local inpath '~/data/data' into table psn -- 加载数据。local关键字用来指定扫描本地文件系统，否则就hdfs。
 -- 以后基本上根据已有数据的结构，设计表，再通过该语句把文件上传到hdfs。
 -- insert基本不用
 
+-- 注意：
+  -- 带有local时，会从本地 复制 文件
+  -- 没有local时，会从hdfs上 移动 文件
 -- -----------------------------
 
 -- 查询数据
 select * from psn;
 ```
 
-- 其他建表方式：
+- 建表方式：
+  - 上述
   - `create table temp as select * from psn`
     > 复制表结构和数据
   - `create table temp1 like psn`
     > 只复制表结构
 
-### 3.6.3. 内部表，外部表
+### 3.5.3. 内部表，外部表
 
 > CLI 中输入`desc formatted 表名`显示的信息中有 Table types 属性
 
-#### 3.6.3.1. managed table 内部表
+#### 3.5.3.1. managed table 内部表
 
 > 上面 DDL 中定义的表就是内部表
 
@@ -2328,11 +2356,16 @@ select * from psn;
 
 **数据经过 hive**
 
-#### 3.6.3.2. extral table 外部表
+#### 3.5.3.2. extral table 外部表
 
 - hdfs 中有数据文件，位于 `/usr`
 - hive 创建外部表。（指定 location）
 - hive 在 mysql 中创建元数据信息，并关联上数据文件（目录自己指定）
+- 注意：
+- **必须指定一个目录**，因为一个表就对应一个目录，而不是一个文件
+- **默认会读取目录下的所有文件**
+- 如果有文件夹会报错（读时检查）
+  > ![](./image/2020-10-15-20-04-34.png)
 
 ```sql
 create table psn2(
@@ -2345,14 +2378,15 @@ row format delimited
 fields terminated by ','  -- 字段分隔符
 collection items terminated by '-'  -- 集合分隔符
 map keys terminated by ':'  -- map的k-v分隔符
-location '/usr/' -- 数据文件所在hdfs的目录
+location '/usr/' -- 数据文件所在hdfs的**目录**，不是文件
 ```
 
 **要根据文档，注意语句顺序，location 一定要放在后面**
 
-#### 3.6.3.3. 内部表，外部表区别
+#### 3.5.3.3. 内部表，外部表区别
 
 - 创建表：
+  > 两种表的元数据都由 hive 管理
   - 内部表不需要 location，直接存储在 hdfs 默认路径
   - 外部表需要指定数据文件路径
 - dorp 时
@@ -2366,7 +2400,7 @@ location '/usr/' -- 数据文件所在hdfs的目录
   - 先有数据再有表，就用外部表
   - 先有表再有数据，就用内部表
 
-#### 3.6.3.4. 检查时机
+#### 3.5.3.4. 检查时机
 
 - mysql 等关系型数据库：写时检查
   - 在插入数据时就会检查数据格式
@@ -2378,27 +2412,57 @@ location '/usr/' -- 数据文件所在hdfs的目录
     - hive 负责数据读取规则（元数据）。
     - 这也保证了了外部表这一机制
 
-### 3.6.4. 分区
+### 3.5.4. 静态分区
 
 > [文档](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL#LanguageManualDDL-AlterPartition)
 
 > 分区概念在 MR,hive,spark 等都有，没有联系
 
+> hive 中动态分区用的比较多
+
 > hive 分区限制：最大 1000 个
 
-- 分区定义：
+#### 3.5.4.1. 建表时定义分区
 
-  - 根据一定条件存储数据
-  - 比如一定的时期（每天）存储在一个目录。
-  - 根据项目情况设置粒度
+- 分区：
+
+  - 目的：提高检索效率
+  - 展现形式：在 hdfs 上创建多级目录
+  - 定义：
+
+    - 根据一定条件存储数据
+    - 比如一定的时期（每天）存储在一个目录。
+    - 根据项目情况设置粒度。
+
   - 分区也是元数据，在 mysql 中可以找到相关表
 
-- Hive 分区 partition
+- 静态分区 partition
 
   > 必须在表定义时指定对应的 partition 字段
 
-  - a、单分区建表语句：
-    - create table day_table (id int, content string) partitioned by (dt string);
+  - 使用步骤：
+
+    - 创建带有分区的表
+    - load 数据，通知指定分区的值，值要自己定义。
+
+      ```
+        -- id name
+            1  bob
+            2 lucy
+
+      load data local inpath '/data/name.txt' into table name partition(age=10)
+      ```
+
+    - hdfs 中保存数据为：
+      ```
+        -- 数据会多出一列
+        -- id name age
+            1  bob 10
+            2 lucy 10
+      ```
+
+  - 单分区建表语句：
+    - 例：`create table day_table (id int, content string) partitioned by (dt string);`
     - 单分区表，按天分区，在表结构中存在 id，content，dt 三列。
       > 分区列也是一个列，但只在 partitioned 语句后指明即可，不能重复声明
     - 以 dt 为文件夹区分
@@ -2407,7 +2471,7 @@ location '/usr/' -- 数据文件所在hdfs的目录
         ```sql
         create table psn5(
           id int,
-          name string,
+          name string
         )
         partitioned by (age int)  -- 注意，查询上方语句格式，不要搞错顺序
         row format delimited
@@ -2419,11 +2483,13 @@ location '/usr/' -- 数据文件所在hdfs的目录
         ```
       - 结果
         > ![](./image/2020-10-13-18-47-31.png)
-  - b、 双分区建表语句：
+  - 双分区建表语句：
+
     - create table day_hour_table (id int, content string) partitioned by (dt string, hour string);
     - 双分区表，按天和小时分区，在表结构中新增加了 dt 和 hour 两列。
     - 先以 dt 为文件夹，再以 hour 子文件夹区分
     - 双分区示例：
+
       - 代码
 
         ```sql
@@ -2438,30 +2504,339 @@ location '/usr/' -- 数据文件所在hdfs的目录
         map keys terminated by ':'
         -- 最终会有 id name age sex四列
         load data local inpath '~/data/data' into table psn5  partipation(age=10,sex='man')  -- 将age=10,sex='man'的数据存储到 age=10/sex='man'分区
-        -- 导入数据时 age和sex顺序反了也没关系
-
         ```
 
       - 结果:
         > ![](./image/2020-10-13-18-58-55.png)
 
-- 其他操作：
-  - 添加分区：`alter table psn6 add patition(age=30,sex='man') `
-    - 结果：会新增一个目录
-      > ![](./image/2020-10-13-19-07-19.png)
-    - 注意：添加分区时，要和创建表时设置的分区层次一致
-  - 删除分区：`alter table psn6 drop partition(sex='man')`
-    - 注意：删除分区时，可以只删一个
-- 分区是元数据：
-  > ![](./image/2020-10-13-19-14-28.png)
-  - 每次查询前，都会查询分区信息
-  - 只有查到分区信息，才能找到数据
-  - 案例：
-    - hdfs 中创建 /user/psn7/age=10/sex='man' 文件夹
-    - 将数据复制到 上述文件夹下
-    - 创建外部表`create table temp1 .... partitioned by (age int,sex string) ....location '/user/'`
-    - 此时进行查询`select * from temp1`，是无法查到任何数据的。因为元数据中没有任何记录
-    - 解决：` msck repair table temp1`
-      > 自动扫描目录，修复数据
+#### 3.5.4.2. 添加和删除分区：
 
-### 3.6.5. 行式存储和列式存储
+- 添加分区：`alter table psn6 add patition(age=30,sex='man') `
+  > 只适用于静态分区
+  - 结果：会新增一个目录
+    > ![](./image/2020-10-13-19-07-19.png)
+  - 注意：添加分区时，要和创建表时设置的分区层次一致
+- 删除分区：`alter table psn6 drop partition(sex='man')`
+  - 注意：删除分区时，可以只删一个
+
+#### 3.5.4.3. 修复分区：
+
+> ![](./image/2020-10-13-19-14-28.png)
+
+- 每次查询前，都会查询分区信息
+- 只有查到分区信息，才能找到数据
+- 案例：
+  - hdfs 中创建 /user/psn7/age=10/sex='man' 文件夹
+  - 将数据复制到 上述文件夹下
+  - 创建外部表`create table temp1 .... partitioned by (age int,sex string) ....location '/user/'`
+  - 此时进行查询`select * from temp1`，是无法查到任何数据的。因为元数据中没有任何记录
+  - 解决：` msck repair table temp1`
+    > 自动扫描目录，修复数据
+
+### 3.5.5. DML
+
+[文档](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DML)
+
+- 插入数据：
+  - 从本地或者 hdfs 文件导入
+    > **用的多**
+    ```sql
+    load data [local] inpath '~/data/data' into table psn;
+    ```
+  - 把查询结果插入
+    > **用的相当多**
+    ```sql
+    from table1
+    insert overwrite table  table2
+    select id,name
+    insert into table table3
+    select id,likes
+    ...;
+    ```
+    - 在只读取 table1 一次的情况下做多次数据插入（table2，table3）
+  - 将查询结果写到服务器上
+    > 基本不用
+    ```sql
+    insert overwrite/into local directory '~/result1'  select-statement
+    ```
+  - 普通插入数据：
+    ```sql
+    insert into table_name values()
+    ```
+- 更新/删除数据
+  - `update psn set name='1111' where id = 1`
+    ```
+    会报错，需要配置开启事务管理器。
+    限制很多，主要由：
+      不支持回滚，提交
+      必须是orc文件格式
+      表必须被分桶
+      默认事务不开启
+      ....
+    hive 的事务非常难用，不推荐用
+    基本不做更新和删除操作
+    ```
+
+### 3.5.6. SerDe
+
+- 定义
+  - SerDe 用于做序列化和反序列化。(Serializer and Deserializer)
+  - 构建在数据存储和执行引擎之间，对两者实现解耦
+  - **作用和分隔符相同**，但是功能要强大很多
+  - 不止支持正则，但是正则用的多
+- hive 正则匹配
+  ```sql
+  CREATE TABLE logtbl (
+      host STRING,
+      identity STRING,
+      t_user STRING,
+      time STRING,
+      request STRING,
+      referer STRING,
+      agent STRING)
+    ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.RegexSerDe'
+    WITH SERDEPROPERTIES (
+      "input.regex" = "([^ ]*) ([^ ]*) ([^ ]*) \\[(.*)\\] \"(.*)\" (-|[0-9]*) (-|[0-9]*)"  -- 一组对应一列
+    )
+    STORED AS TEXTFILE;
+  ```
+
+## 3.6. HiveServer2 and Beeline
+
+- HiveServer2
+
+  - hive 服务是本地提交 sql
+  - HiveServer2 是远程提交 sql 服务，且允许并发访问
+  - hive 和 HiveServer2 在同一层级，都会连接元数据服务。由元数据服务连接数据库。
+    > 本地和远程要看配置文件配置的模式
+  - **生产环境推荐 HiveServer2**，而开发环境使用 hive
+  - HiveServer2 通过`hiveserver2`开启，为阻塞式窗口。
+  - 图示：
+    > ![](./image/2020-10-14-09-57-11.png)
+
+- Beeline
+
+  - 是一个客户端
+  - Beeline 要与 HiveServer2 配合使用
+  - 服务端启动 hiveserver2
+  - 客户的通过 beeline 两种方式连接到 hive
+    - 1、`beeline -u jdbc:hive2://localhost:10000/default [-n root]`
+    - 2、
+      - beeline
+      - beeline> `!connect jdbc:hive2://<host>:<port>/<db> root 123`
+  - Beeline 中命令前面都要有'!'
+  - 默认 用户名、密码不验证。写啥都行，但不能不写
+    - Beeline 只是使用 jdbc 的方式，并不是连接数据库，而是连接 HiveServer。
+    - hiveserver 连接元数据服务，元数据服务连接数据库
+    - 也可以通过 java 代码，进行 jdbc 连接。HiveServer2 直观得说就是提供了一种 jdbc 的访问方式
+  - !quit 退出
+  - Beeline 主要提供了简单的查询操作
+    - 但是，如果在 Beeline 中要进行数据增删改时，要指定为管理员用户名。密码无所谓。
+    - 因为 hadoop 的文件系统也有用户和组的权限定义，否则没有权限修改文件。
+    - 但是 hadoop 只会做一个用户名匹配，没有所谓密码。
+    - 也因为 hadoop 权限控制很不明确，所以**hive 权限控制**很难，之后再说。
+      > 默认任何用户都可以查所有表。不能增删改是因为 hadoop 权限问题，不是 hive 权限
+
+- 搭建方式
+
+  - 模式二：
+    - hiveserver2 会读取配置文件中数据库的信息，在本机建立元数据服务，连接到元数据数据库
+  - 模式三：
+    - hiveserver2 读取配置文件，发现有元数据服务连接，于是连接远程元数据服务。
+
+- jdbc 连接示例；
+  > ![](./image/2020-10-14-10-01-47.png)
+
+## 3.7. hive 函数
+
+> hive 支持比 mysql 更丰富的函数
+
+> [在线文档](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF)
+
+> [翻译文档](./pdf/hive函数.pdf)
+
+### 3.7.1. 内置函数
+
+### 3.7.2. 自定义函数
+
+- UDF 流程
+  - 编写继承 UDF 的类
+  - 实现 evaluate 方法，其中写核心逻辑
+  - 将写好的代码达成 jar 包
+  - 将 jar 上传（两种方式）：
+    - linux
+      - `add jar jar包在linux上的路径`
+      - 创建临时函数：`create temporary function func_name as '全类名';`
+    - hdfs
+      - 创建临时函数：`create temporary function func_name as '全类名' using 'jar包在linux上的路径';`
+
+### 3.7.3. 练习
+
+![](./image/2020-10-15-15-10-08.png)
+
+#### 3.7.3.1. 行转列
+
+四种实现**重要**：
+![](./image/2020-10-15-14-40-35.png)
+
+#### 3.7.3.2. wordcound 的 sql 实现
+
+> 提示：使用 string 转数组 函数，explode 函数
+
+```sql
+create table hello_hadoop_words(
+    word string
+)
+location '/root/test';
+
+create table wc_result(
+  word string,
+  count int
+)
+
+-- 统计sql：
+from (select explode(split(word,' ')) word from hello_hadoop_words) t1
+insert into wc_result
+select word,count(word) group by word  -- 相当于把第一行插到该行中间。当只有一条insert的话，可以把第一行放到该行。但如果有多条insert的话，不能。
+-- 极不推荐 count(*)，否则会加重查询负重
+-- count(1)即可，括号里面只是起一个标识作用
+```
+
+#### 3.7.3.3. 基站掉线率
+
+![](./image/2020-10-15-20-25-32.png)
+
+#### 3.7.3.4. 总结
+
+- 提交的 sql 会成为一个 Application，而不是 job。一个 Application 里面包含多个 job
+- 别名只有在生成表的时候用来显示列名，不能用在计算过程中
+- mapreduce 的 web 页面：
+
+  - 点击 cluster 下的 application，可以查看大致执行情况
+    - Tracking URL:history 的话，是历史日志信息，需要在 hadoop 中配置 jobhistory 才能点开
+  - 点击 cluster 下的 application，点击里面的 log，点击 syslog,点击 here，会显示该次执行 log
+  - Tool 下的 configuration 有 hadoop 的所有配置，包括默认配置
+
+- Hadoop: Job vs Application vs Task vs Task attempt
+
+  ```
+  In terms of YARN, the programs that are being run on a cluster are called applications. In terms of MapReduce they are called jobs. So, if you are running MapReduce on YARN, job and application are the same thing (if you take a close look, job ids and application ids are the same).
+
+  MapReduce job consists of several tasks (they could be either map or reduce tasks). If a task fails, it is launched again on another node. Those are task attempts.
+
+  Container is a YARN term. This is a unit of resource allocation. For example, MapReduce task would be run in a single container.
+  ```
+
+## 3.8. hive 参数
+
+| 命名空间 | 读写权限 | 含义                                                    | 有效期           |
+| :------- | :------- | :------------------------------------------------------ | :--------------- |
+| hiveconf | 可读写   | hive-site.xml 当中的各配置变量                          | 只在当前会话有效 |
+| hivevar  | 可读写   | 例：hive -d val=key                                     |                  |
+| system   | 可读写   | 系统变量，包含 JVM 运行参数等 例：system:user.name=root |                  |
+| env      | 只读     | 环境变量 例：env:JAVA_HOME                              |                  |
+
+- hiveconf：
+
+  - 设置；
+    - 进入 hive 前设置
+      > `hive --hiveconf hive.cli.print.header=true`
+    - 进入 hive 后设置
+      > `set hive.cli.print.header=true`
+    - 创建`~/.hiverc`文件，里面写 set 语句，进入 hive 后会自动执行
+  - 查询：
+    - 进入 hive 后，只输入`set` 会显示所有 hiveconf 选项
+    - 输入 `set hive.cli.print.header`会打印默认值
+
+- hivevar:
+  > 几乎不用
+  - `hive --help`,找到`hive --service serviceName --help`,输入`hive --service cli --help`
+  - 设置(进入之前)：
+    - `hive -d abc=1`
+    - `hive --hivevar abc=1`
+  - 取值：`${abc}`
+- hive 命令历史：`~/.hivehistory`
+
+## 3.9. 动态分区
+
+> 用的更多些
+
+```
+静态分区使用load data，在上传数据时会指定分区，表内数据会多一列。分区列数据一开始不存在，是要主动添加的
+速度快，只用加一列数据
+
+动态分区使用插入语句，从数据表查询然后插入到分区表，插入时调整select顺序，与分区表列顺序匹配。
+动态分区会自动根据指定列进行分区。分区列数据一开始就存在，要做的只是分出来
+速度慢，使用mapreduce进行分区
+
+两个分区都会分文件夹存放数据。两个分区方式只是导入数据方式不同，建表语句相同
+```
+
+- 开启支持动态分区
+
+  - set hive.exec.dynamic.partition=true;
+    - 默认：true
+  - set hive.exec.dynamic.partition.mode=nostrict;
+    - 默认：strict（严格模式，至少有一个分区列是静态分区）
+  - 相关参数
+    - set hive.exec.max.dynamic.partitions.pernode;
+      > 每一个执行 mr 节点上，允许创建的动态分区的最大数量(100)
+    - set hive.exec.max.dynamic.partitions;
+      > 所有执行 mr 节点上，允许创建的所有动态分区的最大数量(1000)
+    - set hive.exec.max.created.files;
+      > 所有的 mr job 允许创建的文件的最大数量(100000) ,要根据硬件调整<br>
+      > linux 中，1G 内存大概可以存储 10000 个文件打开后的文件描述符.<br>
+      > 一个进程默认最多 1024 个<br>
+
+- 设置动态分区：
+
+  - 数据：
+    ```
+    1,小明1,12,man,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    2,小明2,13,boy,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    3,小明3,13,man,lol-book-movie,beijing:shangxuetang-shanghai:pudon
+    4,小明4,12,boy,1ol-book-movie,beijing:shangxuetang-shanghai:pudong
+    5,小明5,13,man,lol-movie,beijing:shangxuetang-shanghai:pudong
+    6,小明6,13,boy,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    7,小明7,13,man,lol-book,beijing:shangxuetang-shanghai:pudong
+    8,小明8,12,boy,lol-book,beijing:shangxuetang-shanghai:pudong
+    9,小明9,12,man,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    ```
+  - 建表：
+
+    ```sql
+    create table psn5(
+      id int,
+      age int,
+      gender string,
+      name string,
+      likes array<string>
+    )
+    row format delimited
+    fields terminated by ','
+    collection items terminated by '-'
+    map keys terminated by ':'
+
+    create table psn6(
+      id int,
+      -- 这里不用声明分区的列，但是是如何确保列的顺序的？？
+      name string,
+      likes array<string>
+    )
+    partitioned by (age int,gender string)
+    row format delimited
+    fields terminated by ','
+    collection items terminated by '-'
+    map keys terminated by ':'
+
+    from psn5
+    insert into psn6 partition(age,gender) -- 根据分区插入
+    select id,name,likes,address,age,gender;  --两个动态分区要放在最后
+    -- 这里会自动进行分区
+    ```
+
+## 3.10. 分桶
+
+## 3.11. 行式存储和列式存储
+
+> test

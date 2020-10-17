@@ -2,40 +2,39 @@
 
 ## 1.1. 常用命令
 
-|          |           |         |               |          |
-| :------: | :-------: | :-----: | :-----------: | :------: |
-|   man    |   help    |         |               |          |
-|    ls    |    cd     |  touch  |      rm       |  mkdir   |
-|    cp    |    mv     |   cat   |     more      |   less   |
-|   tree   |   stat    |  grep   |               |          |
-|   head   |   tail    |         |               |          |
-| poweroff | shutdown  |  exit   |               |          |
-|   ping   | ifconfig  |  wget   | netstat -natp | route -n |
-|  arp -a  |           |         |               |          |
-|  sleep   |           |         |               |          |
-|   ssh    |    scp    |         |               |          |
-|   type   |   which   | whereis |    locate     |   type   |
-|   file   |           |         |               |          |
-|  passwd  |  usermod  |  chown  |     chgrp     |  chmod   |
-| groupadd |    su     |  sudo   |               |          |
-|   who    |   users   |         |               |          |
-|   date   |    cal    |   df    |      du       |    ps    |
-|   top    |   kill    |   ln    |    pstree     |   free   |
-|  mount   | chkconfig | ss -nal |               |          |
-|   rpm    |    yum    |   tar   |      apt      |   make   |
-|   cut    |   sort    |   wc    |      sed      |   awk    |
-|   read   |   test    |  exec   |    source     |   bash   |
-|   echo   |   hash    |         |               |          |
+|          |           |         |               |           |
+| :------: | :-------: | :-----: | :-----------: | :-------: |
+|   man    |   help    |         |               |           |
+|    ls    |    cd     |  touch  |      rm       |   mkdir   |
+|    cp    |    mv     |   cat   |     more      |   less    |
+|   tree   |   stat    |  grep   |               |           |
+|   head   |   tail    |         |               |           |
+| poweroff | shutdown  |  exit   |               |           |
+|   ping   | ifconfig  |  wget   | netstat -natp | route -n  |
+|  arp -a  |           |         |               |           |
+|  sleep   |           |         |               |           |
+|   ssh    |    scp    |         |               |           |
+|   type   |   which   | whereis |    locate     |   type    |
+|   file   |           |         |               |           |
+|  passwd  |  usermod  |  chown  |     chgrp     |   chmod   |
+| groupadd |    su     |  sudo   |               |           |
+|   who    |   users   |         |               |           |
+|   date   |    cal    |         |               |           |
+|    df    |    du     |   ps    |      top      |   kill    |
+|    ln    |  pstree   |  free   |     mount     | chkconfig |
+| ss -nal  | ulimit -a |         |               |           |
+|   rpm    |    yum    |   tar   |      apt      |   make    |
+|   cut    |   sort    |   wc    |      sed      |    awk    |
+|   read   |   test    |  exec   |    source     |   bash    |
+|   echo   |   hash    |         |               |           |
 
-- ss -nal：查看所欲socket监听接口
+- ss -nal：查看所欲 socket 监听接口
 
 - set:显示所有变量，包含环境变量等所有
 - unset:清除变量，包括环境变量
 - env:查看环境变量
-- echo输出
-- read输入
-
-
+- echo 输出
+- read 输入
 
 ## 1.2. 网络命令
 
@@ -202,7 +201,7 @@
 　　示例2: 搜索目的地址是193.233.7.82，来自193.233.7.82，从eth0设备到达的路由（这条命令会产生一条非常有意思的路由，这是一条到193.233.7.82的回环路由）
 　　# ip r g 193.233.7.82 from 193.233.7.82 iif eth0
 　　193.233.7.82 from 193.233.7.82 dev eth0 src 193.233.7.65 realms inr.ac/inr.ac
-　　cache 
+　　cache
  mtu 1500 rtt 300 iif eth0
 　　8. ip route -- 路由策略数据库管理命令
 　　命令
@@ -269,7 +268,6 @@
 　　示例1: # rtmon file /var/log/rtmon.log
 　　示例2: # ip monitor file /var/log/rtmon.log r
 ```
-
 
 # 2. 开始
 
@@ -578,7 +576,7 @@
   - 一行是一个用户的信息
   - 用户名:x:用户 id 号:组 id 号:用户描述信息:用户家目录:用户以交互模式登录时的 shell 外壳程序
     > 原本加密后的密码是保存在 x 那里的，但因为不安全，所以移除了，x 用来占位
-    > 密码数据移到了shadow下
+    > 密码数据移到了 shadow 下
 
 ---
 
@@ -969,8 +967,8 @@
     - $$
       $$
     - \$BASHPI:当前进程 id
-      > 区别：echo \$\$ | more 会显示当前bash的进程id，因为$$优先级大于管道，会优先替换\$$，再执行管道 <br>
-      > echo $BASHPID | more 会显示管道左侧开启 bash 的进程 id，因为$BASKPID优先级小于管道，会执行管道，在进行$BASHPID 的替换<br>
+      > 区别：echo \$\$ | more 会显示当前 bash 的进程 id，因为$$优先级大于管道，会优先替换\$$，再执行管道 <br>
+      > echo $BASHPID | more 会显示管道左侧开启 bash 的进程 id，因为$BASKPID 优先级小于管道，会执行管道，在进行\$BASHPID 的替换<br>
       > 见下面
     - 管道
       - 机制：
@@ -987,7 +985,7 @@
       - 会进行**写时复制**
       - **所以任何一方环境变量被修改都不会影响其他方**
     - 通过`export v1=value`定义
-      > 也可以 export 本地变量  将普通变量变为环境变量
+      > 也可以 export 本地变量 将普通变量变为环境变量
     - 其他：
       - `bash file $` 后台运行
       - sleep 20 ：睡眠 20 秒
@@ -1080,7 +1078,7 @@
 - 算术表达式
 
   - 结构
-    - \$var1+$var2
+    - \$var1+\$var2
     - \$((var1+var2))
       > **\$只是取值，主要是双小括号**
 
