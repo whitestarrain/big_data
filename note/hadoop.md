@@ -745,9 +745,13 @@
 
 **※待做**
 
-### 2.3.5. 高可用集群搭建
+### 2.3.5. Ambari
 
-#### 2.3.5.1. 搭建目标
+**※待做**
+
+### 2.3.6. 高可用集群搭建
+
+#### 2.3.6.1. 搭建目标
 
 > 多看官方文档
 
@@ -766,7 +770,7 @@
 
 > journalnode 和 zookeeper 要先于 DN 和 NN 启动
 
-#### 2.3.5.2. 搭建过程
+#### 2.3.6.2. 搭建过程
 
 > 推荐仔细看看文档，都有
 
@@ -986,7 +990,7 @@
   - 启动三个 zookeeper 服务端进程
   - start-dfs.sh
 
-### 2.3.6. windows 下开发环境(java api 操作)
+### 2.3.7. windows 下开发环境(java api 操作)
 
 - 导入相关 jar 包
 - 通过代码操作
@@ -3089,8 +3093,159 @@ hive 自带，很难用。2.x 后就删了。不用搭。
   - 4、Old Default Hive Authorization (Legacy Mode)
     - hive 默认授权 - 设计目的仅仅只是为了防止用户产生误操作，而不是防止恶意用户访问未经授权的数据
 
-### 3.9.2. 相关概念
+> 实际生产环境中使用的是 **Kerberos**，但基本都是运维去管。
 
-## 3.10. 行式存储和列式存储
+### 3.9.2. SQL Standards Based Authorization in HiveServer2
+
+> [文档](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization)
+
+**文档很全，推荐**
+
+**主要搞清用户和角色，应付面试。一般很少用**
+
+#### 3.9.2.1. 说明
+
+- 完全兼容 SQL 的授权模型
+- 除支持对于用户的授权认证，还支持角色 role 的授权认证
+
+  - role 可理解为是一组权限的集合，通过 role 为用户授权
+  - 一个用户可以具有一个或多个角色
+  - 默认包含另种角色：public、admin
+  - 但没有用户的控制，登录时可以随便输入。（见前面的 hiveServer2）
+
+- 限制：
+
+  - 1、启用当前认证方式之后，dfs, add, delete, compile, and reset 等命令被禁用。
+    > 因为 hdfs 也有权限限制
+  - 2、通过 set 命令设置 hive configuration 的方式被限制某些用户使用。
+    > （可通过修改配置文件 hive-site.xml 中 hive.security.authorization.sqlstd.confwhitelist 进行配置）
+  - 3、添加、删除函数以及宏的操作，仅为具有 admin 的用户开放。
+  - 4、用户自定义函数（开放支持永久的自定义函数），可通过具有 admin 角色的用户创建，其他用户都可以使用。
+  - 5、Transform 功能被禁用。
+
+- 配置：
+  > 配置 metastore 服务所在服务器
+  ```xml
+  <property>
+    <name>hive.security.authorization.enabled</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hive.server2.enable.doAs</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>hive.users.in.admin.role</name>
+    <value>root</value>
+  </property>
+  <property>
+    <name>hive.security.authorization.manager</name>
+    <value>org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory</value>
+  </property>
+  <property>
+    <name>hive.security.authenticator.manager</name>
+    <value>org.apache.hadoop.hive.ql.security.SessionStateUserAuthenticator</value>
+  </property>
+  ```
+
+#### 3.9.2.2. 用户和角色管理
+
+- 用户：
+
+  - 用户不做验证
+  - 所有用户默认是 public 角色
+  - 权限管理就是修改用户的角色
+
+- 角色管理
+  - CREATE ROLE role_name; -- 创建角色
+    > 只有 admin 角色可以使用
+  - DROP ROLE role_name; -- 删除角色
+  - SET ROLE (role_name|ALL|NONE); -- 设置角色
+  - SHOW CURRENT ROLES; -- 查看当前具有的角色
+  - SHOW ROLES; -- 查看所有存在的角色
+
+#### 3.9.2.3. 角色权限管理
+
+- 角色权限管理语法：
+
+  - 授权：
+
+    ```sql
+    -- 将角色授予某个用户、角色：
+    GRANT role_name [, role_name] ...
+    TO principal_specification [, principal_specification] ...
+    [ WITH ADMIN OPTION ];
+
+    principal_specification
+      : USER user
+      | ROLE role
+    ```
+
+  - 移除权限：
+
+    ```sql
+    -- 移除某个用户、角色的角色：
+    REVOKE [ADMIN OPTION FOR] role_name [, role_name] ...
+    FROM principal_specification [, principal_specification] ... ;
+
+    principal_specification
+      : USER user
+      | ROLE role
+    ```
+
+  - 查看授予某个用户、角色的角色列表
+    ```sql
+    SHOW ROLE GRANT (USER|ROLE) principal_name;
+    ```
+  - 查看属于某种角色的用户、角色列表
+    ```sql
+    SHOW PRINCIPALS role_name;
+    ```
+
+#### 3.9.2.4. 权限管理
+
+> 和 mysql 一样
+
+- 权限说明：
+  - SELECT privilege – gives read access to an object.
+  - INSERT privilege – gives ability to add data to an object (table).
+  - UPDATE privilege – gives ability to run update queries on an object (table).
+  - DELETE privilege – gives ability to delete data in an object (table).
+  - ALL PRIVILEGES – gives all privileges (gets translated into all the above privileges).
+- 语法：
+
+  - 将权限授予某个用户、角色：
+
+    ```sql
+    GRANT
+        priv_type [, priv_type ] ...
+        ON table_or_view_name
+        TO principal_specification [, principal_specification] ...
+        [WITH GRANT OPTION];
+    principal_specification
+      : USER user
+      | ROLE role
+
+    priv_type
+      : INSERT | SELECT | UPDATE | DELETE | ALL
+    ```
+
+  - 移除某个用户、角色的权限：
+    ```sql
+    REVOKE [GRANT OPTION FOR]
+        priv_type [, priv_type ] ...
+        ON table_or_view_name
+        FROM principal_specification [, principal_specification] ... ;
+    ```
+  - 查看某个用户、角色的权限：
+    ```sql
+    SHOW GRANT [principal_name] ON (ALL| ([TABLE] table_or_view_name)
+    ```
+
+## 3.10. Hive 优化
+
+**面试必问**
+
+## 3.11. 行式存储和列式存储
 
 > test
