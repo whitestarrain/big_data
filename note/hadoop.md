@@ -148,8 +148,10 @@
   ```
   Hadoop简介
   名字来源于Doug Cutting儿子的玩具大象。
-  2003-2004年，Google公开了部分GFS和Mapreduce思想的细节，以此为基础Doug Cutting等人用了2年业余时间实现了DFS和Mapreduce机制，一个微缩版的Nutch(nutch:第一个开源的分布式搜索框架，apache公司)
-  Hadoop 于 2005 年秋天作为 Lucene的子项目 Nutch的一部分正式引入Apache基金会。2006 年 3 月份，Map-Reduce 和 Nutch Distributed File System (NDFS) 分别被纳入称为 Hadoop 的项目
+  2003-2004年，Google公开了部分GFS和Mapreduce思想的细节，以此为基础Doug Cutting等人用了2年业余时间实现了DFS和Mapreduce机制，
+  一个微缩版的Nutch(nutch:第一个开源的分布式搜索框架，apache公司)
+  Hadoop 于 2005 年秋天作为 Lucene的子项目 Nutch的一部分正式引入Apache基金会。
+  2006 年 3 月份，Map-Reduce 和 Nutch Distributed File System (NDFS) 分别被纳入称为 Hadoop 的项目
   ```
 - Hadoop 简介：https://hadoop.apache.org/old/
   - 版本：1.x，2.x，3.x
@@ -1786,6 +1788,8 @@ split 读取方式，解决行的分割
 
 # 3. hive 数据仓库
 
+> 注意：教程都是最基本的，如果想深入就去查官方文档
+
 ## 3.1. 现状
 
 > sql 使用 99 语法 92 语法不要再用了。sql 一句基本几百行
@@ -1868,8 +1872,8 @@ split 读取方式，解决行的分割
         - 种类示例：(并不全)
           > ![](./image/2020-10-12-19-55-06.png)
         - Operator 都定义有:
-          - `protected List <Operator<? extends Serializable` >> `childOperators; `
-          - `protected List <Operator<? extends Serializable` >> `parentOperators; `
+          - `protected List <Operator<? extends Serializable` >> `childOperators; `
+          - `protected List <Operator<? extends Serializable` >> `parentOperators; `
           - `protected boolean done; // 初始化值为false`
       - ANTLR 词法语法分析工具解析 hql（hql 自己百度）：
         > ![](./image/2020-10-12-20-05-02.png)
@@ -2388,7 +2392,7 @@ select * from psn;
 - hive 在 mysql 中创建元数据信息
 - hive 将数据复制到 hdfs 的指定目录（目录自动生成） （load data 或 insert）
 
-**数据经过 hive**
+数据经由 hive 上传到 hdfs
 
 #### 3.6.3.2. extral table 外部表
 
@@ -2594,6 +2598,7 @@ location '/usr/' -- 数据文件所在hdfs的**目录**，不是文件
     insert overwrite/into local directory '~/result1'  select-statement
     ```
   - 普通插入数据：
+    > 根本不用
     ```sql
     insert into table_name values()
     ```
@@ -2683,7 +2688,7 @@ create table wc_result(
 )
 
 -- 统计sql：
-from (select explode(split(word,' ')) word from hello_hadoop_words) t1
+from (select explode(split(word,' ')) word from hello_hadoop_words) t1  -- 这个t1不能省略，否则会报错
 insert into wc_result
 select word,count(word) group by word  -- 相当于把第一行插到该行中间。当只有一条insert的话，可以把第一行放到该行。但如果有多条insert的话，不能。
 -- 极不推荐 count(*)，否则会加重查询负重
@@ -2751,13 +2756,13 @@ select word,count(word) group by word  -- 相当于把第一行插到该行中�
   - 数据：
     ```
     1,小明1,12,man,lol-book-movie,beijing:shangxuetang-shanghai:pudong
-    2,小明2,13,boy,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    2,小明2,13,woman,lol-book-movie,beijing:shangxuetang-shanghai:pudong
     3,小明3,13,man,lol-book-movie,beijing:shangxuetang-shanghai:pudon
-    4,小明4,12,boy,1ol-book-movie,beijing:shangxuetang-shanghai:pudong
+    4,小明4,12,woman,1ol-book-movie,beijing:shangxuetang-shanghai:pudong
     5,小明5,13,man,lol-movie,beijing:shangxuetang-shanghai:pudong
-    6,小明6,13,boy,lol-book-movie,beijing:shangxuetang-shanghai:pudong
+    6,小明6,13,woman,lol-book-movie,beijing:shangxuetang-shanghai:pudong
     7,小明7,13,man,lol-book,beijing:shangxuetang-shanghai:pudong
-    8,小明8,12,boy,lol-book,beijing:shangxuetang-shanghai:pudong
+    8,小明8,12,woman,lol-book,beijing:shangxuetang-shanghai:pudong
     9,小明9,12,man,lol-book-movie,beijing:shangxuetang-shanghai:pudong
     ```
   - 建表：
@@ -2765,9 +2770,9 @@ select word,count(word) group by word  -- 相当于把第一行插到该行中�
     ```sql
     create table psn5(
       id int,
+      name string,
       age int,
       gender string,
-      name string,
       likes array<string>
     )
     row format delimited
@@ -2801,11 +2806,13 @@ select word,count(word) group by word  -- 相当于把第一行插到该行中�
   - 由列的哈希值取余桶的个数来决定每条数据划分在哪个桶中。
 - 适用场景：
   - 数据抽样
+    > reduce 个数等于桶的个数
 - 开启分桶
 
   - set hive.enforce.bucketing=true;
     > 默认：false；设置为 true 之后，mr 运行时会根据 bucket 的个数自动分配 reduce task 个数。一般一个 bucket 对应一个 reduce
     > （用户也可以通过 mapred.reduce.tasks 自己设置 reduce 任务个数，但分桶时不推荐使用）
+    > ![](./image/image_2020-10-20-20-47-21.png)
   - 注意：一次作业产生的桶（文件数量）和 reduce task 个数一致。
 
 - 分桶抽样查询：`select * from bucket_table tablesample(bucket x out of y on columns)`;
@@ -2817,60 +2824,60 @@ select word,count(word) group by word  -- 相当于把第一行插到该行中�
 
   - 数据
 
-  ```
-  测试数据：
-  1,tom,11
-  2,cat,22
-  3,dog,33
-  4,hive,44
-  5,hbase,55
-  6,mr,66
-  7,alice,77
-  8,scala,88
-  ```
+    ```
+    测试数据：
+    1,tom,11
+    2,cat,22
+    3,dog,33
+    4,hive,44
+    5,hbase,55
+    6,mr,66
+    7,alice,77
+    8,scala,88
+    ```
 
   - sql：
 
-  ```sql
-  -- 创建数据表
-  create table age_t(
-    id int,
-    name string,
-    age int
-  )
-  row format delimited
-  fields terminated by ','
+    ```sql
+    -- 创建数据表
+    create table age_t(
+      id int,
+      name string,
+      age int
+    )
+    row format delimited
+    fields terminated by ','
 
-  -- 导入数据
-  load data local inpath '/root/data/age' into table age_bucket
+    -- 导入数据
+    load data local inpath '/root/data/age' into table age_bucket
 
-  -- 创建分桶表
-  create table age_bucket(
-    id int,
-    name string,
-    age into
-  )
-  clustered by(age) into 4 bucket
-  row format delimited
-  fields terminated by ','
+    -- 创建分桶表
+    create table age_bucket(
+      id int,
+      name string,
+      age int
+    )
+    clustered by(age) into 4 buckets
+    row format delimited
+    fields terminated by ','
 
-  -- 开启分桶
-  set hive.enforce.bucketing=true
+    -- 开启分桶
+    set hive.enforce.bucketing=true
 
-  -- 数据分桶：
-  from age_t
-  insert into age_bucket select id,name,age
+    -- 数据分桶：
+    from age_t
+    insert into age_bucket select id,name,age
 
-  -- 从分桶表数据中进行抽样
-  select * from age_bucket tablesample (bucket 2 out of 4)
-  -- 所有桶分成4份，4/4=1，也就是一份一桶
-  -- 抽取4个bucket中的第二个bucket
-  select * from age_bucket tablesample (bucket 2 out of 8)
-  -- 所有桶分成8份，4/8=1/2，也就是一份半桶
-  -- 抽取8个1/2 bucket中的第二个 1/2bucket
-  -- 1/2 bucket就是桶中数据的1/2
-  -- 一般都取整数份，这种用的不错
-  ```
+    -- 从分桶表数据中进行抽样
+    select * from age_bucket tablesample (bucket 2 out of 4)
+    -- 所有桶分成4份，4/4=1，也就是一份一桶
+    -- 抽取4个bucket中的第二个bucket
+    select * from age_bucket tablesample (bucket 2 out of 8)
+    -- 所有桶分成8份，4/8=1/2，也就是一份半桶
+    -- 抽取8个1/2 bucket中的第二个 1/2bucket
+    -- 1/2 bucket就是桶中数据的1/2
+    -- 一般都取整数份，这种用的不错
+    ```
 
 ### 3.6.10. Hive Later View
 
@@ -3242,10 +3249,370 @@ hive 自带，很难用。2.x 后就删了。不用搭。
     SHOW GRANT [principal_name] ON (ALL| ([TABLE] table_or_view_name)
     ```
 
-## 3.10. Hive 优化
+## 3.10. Hive 优化方式
 
 **面试必问**
 
-## 3.11. 行式存储和列式存储
+> 通用优化策略
+
+- 核心思想：**把 Hive SQL 当做 Mapreduce 程序去优化**
+
+- Hive 抓取策略：
+
+  - Hive 中对某些情况的查询不需要使用 MapReduce 计算
+    - 以下 SQL 不会转为 Mapreduce 来执行
+      - select 仅查询本表字段
+      - where 仅对本表字段做条件过滤
+  - 方式：Set hive.fetch.task.conversion=none/more;
+    - 当改成 none 时，select 也会执行 mapreduce。所以不要改
+
+- Explain 显示执行计划
+
+  - `explain select * from psn`
+  - `explain extended select * from psn ` 具体语法树和逻辑
+  - 要了解 antlr 包才能看懂
+  - 会显示 sql 如何转成 mr 任务
+
+- Hive 运行方式：
+
+  - 本地模式
+
+    - 优势：只在本机跑 mr，不用和其他节点交互，测试时快
+    - 开启本地模式：set hive.exec.mode.local.auto=true;
+    - 注意：
+      - 这样就无法在 8088 端口看 mr 执行情况
+      - hive.exec.mode.local.auto.inputbytes.max 默认值为 128M
+        > 表示加载文件的最大值，若大于该配置仍会以集群方式来运行！
+
+  - 集群模式
+
+- 并行模式
+  - 通过设置以下参数开启并行模式：
+    - set hive.exec.parallel=true;
+  - 注意：hive.exec.parallel.thread.number
+    > 一次 SQL 计算中允许并行执行的 job 个数的最大值
 
 > test
+
+- 严格模式
+  - 通过设置以下参数开启严格模式：
+  - set hive.mapred.mode=strict;
+    > （默认为：nonstrict 非严格模式）
+- 开启后的查询限制：
+
+  - 1、对于分区表，必须添加 where 对于分区字段的条件过滤；
+  - 2、使用 order by 语句,必须包含 limit 输出限制；
+  - 3、限制执行笛卡尔积的查询。
+
+- Hive 排序
+
+  - Order By - 对于查询结果做全排序，只允许有一个 reduce 处理
+    - 当数据量较大时，应慎用。严格模式下，必须结合 limit 来使用
+    - 不要使用了
+  - Sort By - 对于单个 reduce 的数据进行排序
+  - Distribute By - 分区排序，经常和 Sort By 结合使用
+    - 结合使用相当于归并排序
+    - **最常使用**
+  - Cluster By - 相当于 Sort By + Distribute By
+    - （Cluster By 不能通过 asc、desc 的方式指定排序规则；
+    - 可通过 distribute by column sort by column asc|desc 的方式）
+
+- Hive Join
+
+  > join 用法和 mysql 基本相同,不过多了一个 LEFT SEMI JOIN，用来代替 mysql 的 exists
+  > 具体查文档
+
+  - Join 计算时，推荐将小表（驱动表）放在 join 的左边，mysql 中也是这样
+
+    > 过程是将小表数据放在内存中，然后再依次读取大表中的数据，和内存中小表的数据进行比对
+    > 10*1000 次，10 次遍历 1000 时，
+    > 1000*10 次，1000 次遍历 10，
+    > 两者 可能中途就停下来了。前者最少 10 次，后者最少 1000 次
+
+  - Map Join：在 Map 端完成 Join（存在小表的优化策略）
+    - 两种实现方式：
+      - 1、SQL 方式，在 SQL 语句中添加 MapJoin 标记（mapjoin hint）
+        - 语法：
+          ```sql
+          sql SELECT /*+ MAPJOIN(smallTable) */ smallTable.key, bigTable.value FROM smallTable JOIN bigTable ON smallTable.key = bigTable.key;
+          ```
+      - 2、开启自动的 MapJoin
+        - 通过修改以下配置启用自动的 mapjoin：set hive.auto.convert.join = true;
+          > 该参数为 true 时，Hive 自动对左边的表统计量，如果是小表就加入内存，即对小表使用 Map join
+        - 相关配置参数（前两个用的比较多）：
+          - hive.mapjoin.smalltable.filesize;
+            > （大表小表判断的阈值，如果表的大小小于该值则会被加载到内存中运行，默认 25MB）
+          - hive.ignore.mapjoin.hint；
+            > （默认值：true；是否忽略 mapjoin hint 即 mapjoin 标记，主要是为了解决手动和自动 mapjoin 冲突的情况）
+          - hive.auto.convert.join.noconditionaltask;
+            > （默认值：true；将普通的 join 转化为普通的 mapjoin 时，是否将多个 mapjoin 转化为一个 mapjoin）
+          - hive.auto.convert.join.noconditionaltask.size;
+            > （将多个 mapjoin 转化为一个 mapjoin 时，其表的最大值）
+  - 大表 join 大表
+    > 其实没太大效率
+    - 空 key 过滤：有时 join 超时是因为某些 key 对应的数据太多，而相同 key 对应的数据都会发送到相同的 reducer 上，从而导致内存不够。此时我们应该仔细分析这些异常的 key，很多情况下，这些 key 对应的数据是异常数据，我们需要在 SQL 语句中进行过滤。
+    - 空 key 转换：有时虽然某个 key 为空对应的数据很多，但是相应的数据不是异常数据，必须要包含在 join 的结果中，此时我们可以表 a 中 key 为空的字段赋一个随机的值，使得数据随机均匀地分不到不同的 reducer 上
+
+- map-side 聚合：※
+
+  > 有关于 mr 端的 Combiner
+
+  - 通过设置以下参数开启在 Map 端的聚合：
+    - set hive.map.aggr=true;
+  - 相关配置参数：
+    - hive.groupby.mapaggr.checkinterval：
+      - map 端 group by 执行聚合时处理的多少行数据（默认：100000）
+    - hive.map.aggr.hash.min.reduction：
+      - 进行聚合的最小比例（预先对 100000 条数据做聚合，若聚合之后的数据量/100000 的值大于该配置 0.5，则不会聚合）
+    - hive.map.aggr.hash.percentmemory：
+      - map 端聚合使用的内存的最大值
+    - hive.map.aggr.hash.force.flush.memory.threshold：
+      - map 端做聚合操作是 hash 表的最大可用内容，大于该值则会触发 flush
+    - **hive.groupby.skewindata** 重要，一定要开启
+      - 是否对 GroupBy 产生的数据倾斜做优化，默认为 false
+      - 会将数据量大的 mr 分为两个 mr，避免数据过大卡死
+
+- 合并小文件
+
+  - 原因：文件数目小，容易在文件存储端造成压力，给 hdfs 造成压力，影响效率
+  - 设置合并属性
+    - 是否合并 map 输出文件：hive.merge.mapfiles=true
+    - 是否合并 reduce 输出文件：hive.merge.mapredfiles=true;
+    - 合并文件的大小：hive.merge.size.per.task=256*1000*1000
+      > 文件大于多少是不再合并。默认 256MB
+
+- 去重统计
+
+  - 数据量小的时候无所谓，数据量大的情况下，由于 COUNT DISTINCT 操作需要用一个 Reduce Task 来完成，这一个 Reduce 需要处理的数据量太大，就会导致整个 Job 很难完成，一般 COUNT DISTINCT 使用先 GROUP BY 再 COUNT 的方式替换
+
+- 控制 Hive 中 Map 以及 Reduce 的数量※
+
+  - Map 数量相关的参数
+
+    > 一般不要改
+
+    - mapred.max.split.size
+      - 一个 split 的最大值，即每个 map 处理文件的最大值。默认 256MB
+    - mapred.min.split.size.per.node
+      - 一个节点上 split 的最小值
+    - mapred.min.split.size.per.rack
+      - 一个机架上 split 的最小值
+    - 例：
+      ```
+      max:64
+      70 80 90
+      ```
+
+  - Reduce 数量相关的参数
+    - mapred.reduce.tasks
+      - 强制指定 reduce 任务的数量
+    - hive.exec.reducers.bytes.per.reducer
+      - 每个 reduce 任务处理的数据量
+    - hive.exec.reducers.max
+      - 每个任务最大的 reduce 数
+
+- Hive - JVM 重用
+  - 适用场景：
+    - 1、小文件个数过多
+    - 2、task 个数过多
+  - 通过 set mapred.job.reuse.jvm.num.tasks=n; 来设置
+    > （n 为 task 插槽个数）
+  - 缺点：设置开启之后，task 插槽会一直占用资源，不论是否有 task 运行，直到所有的 task 即整个 job 全部执行完成时，才会释放所有的 task 插槽资源！
+
+## 3.11. hive HA
+
+> 针对 hiveserver2 搭建高可用
+
+## 3.12. 数据格式
+
+表数据存储：
+
+行式存储和列式存储
+
+只有在特殊场景下才能判断好坏
+
+# 4. HBase
+
+## 4.1. 大数据架构
+
+较老的一个架构图 Mahout,Pig 等都已经淘汰了。用来讲一下大数据技术的架构
+
+> ![](./image/2020-10-21-19-01-24.png)
+
+## 4.2. 概念
+
+[官网](https://hbase.apache.org/)
+
+```
+Use Apache HBase when you need random, realtime read/write access to your Big Data.
+This project's goal is the hosting of very large tables -- billions of rows X millions of columns -- atop clusters of commodity hardware.
+Apache HBase is an open-source, distributed, versioned, non-relational database modeled after Google's Bigtable: A Distributed Storage System for Structured Data by Chang et al.
+Just as Bigtable leverages the distributed data storage provided by the Google File System, Apache HBase provides Bigtable-like capabilities on top of Hadoop and HDFS.
+```
+
+- 非关系型数据库知识面扩展: Cassandra hbase mongodb
+
+  - mongobd：文档型数据库
+  - Couchdb：文件存储数据库，类似 HBase
+  - Neo4j：非关系型图数据库
+
+- Hbase
+  - Hadoop Database，是一个高可靠性、高性能、面向列、可伸缩、实时读写的分布式数据库
+    - 面向列的 k-v 型数据库，**不是列式数据库**。hbase 创建表时不需要定义列（但要定义列族），插入值时指定列名（key）即可
+    - 实时读写：读写速度快，数据量大时速度快
+    - 可伸缩：可动态扩展集群，不需要停止集群
+  - 利用 Hadoop HDFS 作为其文件存储系统,利用 Hadoop MapReduce 来处理 HBase 中的海量数据,利用 Zookeeper 作为其分布式协同服务
+    - zookeeper 不止用来做高可用
+    - HBase 中，zookeeper 是必须的
+  - 主要用来存储非结构化和半结构化的松散数据（列存 NoSQL 数据库）
+    - 对数据格式没有要求
+    - 也可以存储结构化数据
+
+## 4.3. 数据模型
+
+- 逻辑数据模型
+
+  > ![](./image/2020-10-21-20-16-11.png)
+
+  - key:Rowkey+列族名+列名+时间戳
+  - value:val
+
+- Row key:
+  - 一个 row key 决定一行数据
+  - 按照字典序排序
+  - 一行只能存储 64k 的字节数据，但一般只存 10--100 个字节
+- Column Family 列族 & qualifier 列
+  - HBase 表中的每个列都归属于某个列族，列族必须作为表模式(schema)定义的一部分预先给出。如 create ‘test’, ‘course’；
+  - 列名以列族作为前缀，每个“列族”都可以有多个列成员(column)；如 course:math, course:english, 新的列族成员（列）可以随后按需、动态加入；
+  - 权限控制、存储以及调优都是在**列族层面**进行的；
+  - HBase 把同一列族里面的数据存储在同一目录下，由几个文件保存。
+- Timestamp 时间戳
+  - 在 HBase 每个 cell 存储单元对同一份数据有多个版本，根据唯一的时间戳来区分每个版本之间的差异，不同版本的数据按照时间倒序排序，最新的数据版本排在最前面。
+  - 时间戳的类型是 64 位整型。
+  - 时间戳可以由 HBase(在数据写入时自动)赋值，此时时间戳是精确到毫秒的当前系统时间。
+  - 时间戳也可以由客户显式赋值，如果应用程序要避免数据版本冲突，就必须自己生成具有唯一性的时间戳。
+- Cell 单元格
+
+  - 由行和列的坐标交叉决定；
+  - 单元格是有版本的；
+  - 单元格的内容是未解析的**字节数组**；
+  - 由`{row key， column( =<family> +<qualifier>)， version}`唯一确定的单元。
+  - cell 中的数据是没有类型的，全部是**字节数组**形式存贮。
+
+- HLog(WAL log)
+  > write ahead log
+  - log 文件中除了记录操作信息，也会记录数据
+  - HLog 文件就是一个普通的 Hadoop Sequence File
+    - Sequence File 的 Key 是 HLogKey 对象
+      - HLogKey 中记录了写入数据的归属信息，
+      - 除了 table 和 region 名字外，同时还包括 sequence number 和 timestamp，
+      - timestamp 是"写入时间"，sequence number 的起始值为 0，或者是最近一次存入文件系统中 sequence number。
+      - sequence number：value 的序列化文件中也会有该值，log 中的 sequenc number 和序列化文件中的 sequence number 作匹配，检查是否进行了序列化。
+        > Hbase 实时读写，数据放内存，为了数据安全，通过该值判断是否从 log 中恢复数据
+    - HLog SequeceFile 的 Value 是 HBase 的 KeyValue 对象，即对应 HFile 中的 KeyValue。
+
+
+## 4.4. hive 架构
+
+### 架构
+
+- Hbase是主从架构，而不是主备架构，主从和主备不同
+  - 主备：两台机器做相同事情，一台主机器，一台备机
+  - 主从；一台总服务器，下面则是其他服务器，比如resourceManger和NodeManger
+
+架构图:
+![](./image/image_2020-10-22-19-51-55.png)
+> **HLog应该在HRegion外面，HRegionServer里面。被所有Region所共享。这个官网架构图有误**
+
+- 角色：
+  - Client:包含访问HBase的接口并维护cache来加快对HBase的访问
+    - Client修改元数据是才需要访问HMaster，而HRegionServer可以直接访问
+    - cache:客户端缓存
+  - zookeeper:作为Client和HMaster间传递信息的中介
+    - 作用：
+      - 保证任何时候，集群中只有一个活跃master
+      - 实时监控Region server的上线和下线信息。并实时通知Master
+      - 存贮所有Region的寻址入口，也就是元数据表所在位置的表。
+      - 存储HBase的schema和table元数据
+    - 也会和HRegionServer进行通信,
+    - HMaster和HRegionServer都会主动向zookeeper进行注册
+  - HMaster
+    - 为Region server分配region，也就是把表分配到region上
+    - 负责Region server的负载均衡
+    - 发现失效的Region server并重新分配其上的region到其他RegionServer
+    - 管理用户对table的增删改操作
+  - HRegionServer:HBase的从节点，承担具体存储，查询CRUD等操作
+    - 作用：
+      - Region server维护region，处理对这些region的IO请求
+      - Region server负责切分在运行过程中变得过大的region。表数据太大时，会将表等分，留下一半，另一半移到其他region
+    - 组成：
+      - HLog:预写数据
+        > 被所有region所共享
+      - region:和表是一个层次的，每一个表对应至少一个region
+        - HBase自动把表水平划分成多个区域(region)，每个region会保存一个表里面某段连续的数据
+        - 每个表一开始只有一个region，随着数据不断插入表，region不断增大，当增大到一个阀值的时候，region就会等分会两个新的region（裂变）
+        - 当table中的行不断增多，就会有越来越多的region。这样一张完整的表被保存在多个Regionserver 上。
+      - Memstore:内存存储。详细看下面写流程
+      - store:列族层次,数据是写到内存中。默认64MB（hdfs块默认128MB）
+        - 一个region由多个store组成，一个store对应一个CF（列族）
+        - store包括位于内存中的memstore和位于磁盘的storefile写操作先写入memstore，当memstore中的数据达到某个阈值，hregionserver会启动flashcache进程写入storefile，每次写入形成单独的一个storefile
+        - 当storefile文件的数量增长到一定阈值后，系统会进行合并（minor(3-10个文件)、major(所有文件) compaction），在合并过程中会进行版本合并和删除(之前提到的过期版本的删除)工作（majar），形成更大的storefile
+        - 当一个region所有storefile的大小和数量超过一定阈值后，会把当前的region分割为两个，并由hmaster分配到相应的regionserver服务器，实现负载均衡
+        - 客户端检索数据，先在memstore找，找不到再找storefile
+      - StoreFile:内存中的文件溢写成文件StoreFile
+      - HFile:StoreFile是HFile的一个封装，数据文件存储到HDFS中时本身就交HFile，但在HBase集群中称为StoreFile。两者几乎可以划等号
+      - blockcache:存放读过的数据，使用FIFO。
+        > 架构图中没有画
+
+架构图：
+![](./image/image_2020-10-22-22-32-40.png)
+
+HRegion是HBase中分布式存储和负载均衡的最小单元。最小单元就表示不同的HRegion可以分布在不同的 HRegion server上。
+
+HRegion由一个或者多个Store组成，每个store保存一个columns family。
+每个Strore又由一个memStore和0至多个StoreFile组成。如图：StoreFile以HFile格式保存在HDFS上。
+
+![](./image/image_2020-10-22-22-32-56.png)
+
+
+### 读写流程
+
+
+- 写流程：
+  > 面试经常问
+  - Client提交请求
+  - Client访问zookeeper
+  - 获取zookeeper中会存放**元数据存储位置**的表meta
+  - 然后再访问某个RegionServer，从RegsionServer中拿到元数据，元数据中有所有表的所有信息
+  - 获得表的位置信息
+  - 去具体RegionServer
+  - 找表(region)
+  - 先往Hlog中写数据和日志
+    - 注意：往内存中写HLog，然后会有一个**异步**线程将内存中的数据写到磁盘上。（也可以延迟写，每隔一定时间写一次）
+    - HLog是一个顺序写文件，然后会直接将数据append到dfs上，没有排序过程，所以很快
+    - 因为日志文件不可以无限追加，所以每隔一定时间都会在磁盘或dfs中打开一个新的文件
+    - 相关类
+      - LogAsync类，异步写数据
+      - LogRoller类：默认每60分钟打开一个新的日志文件。
+  - 再往内存中的store写
+  - store达到阈值后就会溢写，然后成为多个storeFile
+    - 注意：往内存中写表数据，然后会有一个**异步**线程将内存中的数据写到磁盘上。（也可以延迟写，每隔一定时间写一次）
+    - LSM树(Log Structure Merge)
+      > 面试可能会问※
+      - memstore和storefile整体可以称为一个LSM树
+    - 溢写后小文件的合并
+      - minor:3-10个文件一合并
+      - major:将region下所有文件全部合并
+
+- 读流程
+  > 面试经常问
+  - Client提交请求
+  - Client访问zookeeper
+  - 获取zookeeper中存放**元数据存储位置**的表meta
+  - 去指定RegsionServer中找数据
+  - 先去MemStore中寻找
+  - 找不到再去blockcache中查找
+    - blockcache被一个RegsionServer所共享。类此操作系统中将常用数据存储到cache中
+      > 架构图中没有画
+  - 找不到再去磁盘中找。将查询的结果重新写到blockcache当中
+
