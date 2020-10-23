@@ -3514,15 +3514,15 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
 
 ## 4.4. hive 架构
 
-### 架构
+### 4.4.1. 架构
 
 - Hbase是主从架构，而不是主备架构，主从和主备不同
   - 主备：两台机器做相同事情，一台主机器，一台备机
   - 主从；一台总服务器，下面则是其他服务器，比如resourceManger和NodeManger
 
-架构图:
-![](./image/image_2020-10-22-19-51-55.png)
-> **HLog应该在HRegion外面，HRegionServer里面。被所有Region所共享。这个官网架构图有误**
+- 架构图:
+  > ![](./image/image_2020-10-23-10-39-48.png)
+  > **HLog应该在HRegion外面，HRegionServer里面。被所有Region所共享。这个官网架构图有误**
 
 - 角色：
   - Client:包含访问HBase的接口并维护cache来加快对HBase的访问
@@ -3558,25 +3558,27 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
         - store包括位于内存中的memstore和位于磁盘的storefile写操作先写入memstore，当memstore中的数据达到某个阈值，hregionserver会启动flashcache进程写入storefile，每次写入形成单独的一个storefile
         - 当storefile文件的数量增长到一定阈值后，系统会进行合并（minor(3-10个文件)、major(所有文件) compaction），在合并过程中会进行版本合并和删除(之前提到的过期版本的删除)工作（majar），形成更大的storefile
         - 当一个region所有storefile的大小和数量超过一定阈值后，会把当前的region分割为两个，并由hmaster分配到相应的regionserver服务器，实现负载均衡
-        - 客户端检索数据，先在memstore找，找不到再找storefile
+          > 也就是小文件太小会合并，大文件太大会分裂
+        - 客户端检索数据，先在memstore找，找不到再找blockcache和storefile
       - StoreFile:内存中的文件溢写成文件StoreFile
       - HFile:StoreFile是HFile的一个封装，数据文件存储到HDFS中时本身就交HFile，但在HBase集群中称为StoreFile。两者几乎可以划等号
       - blockcache:存放读过的数据，使用FIFO。
         > 架构图中没有画
 
-架构图：
-![](./image/image_2020-10-22-22-32-40.png)
+- 细节架构图：
+  > ![](./image/image_2020-10-22-22-32-40.png)
+  - HRegion是HBase中分布式存储和负载均衡的最小单元。最小单元就表示不同的HRegion可以分布在不同的 HRegion server上。
+  - HRegion由一个或者多个Store组成，每个store保存一个columns family。
+  - 每个Strore又由一个memStore和0至多个StoreFile组成。如图：StoreFile以HFile格式保存在HDFS上。
+  > ![](./image/image_2020-10-23-10-42-57.png) 
 
-HRegion是HBase中分布式存储和负载均衡的最小单元。最小单元就表示不同的HRegion可以分布在不同的 HRegion server上。
+- 涉及排序：
+  - 数据往Memstore中写时，会进行排序
+  - 溢写出的文件间无序，当文件间合并时会进行排序
 
-HRegion由一个或者多个Store组成，每个store保存一个columns family。
-每个Strore又由一个memStore和0至多个StoreFile组成。如图：StoreFile以HFile格式保存在HDFS上。
+> 小知识点，所有关系型数据库中的数据都是使用B+树结构存储
 
-![](./image/image_2020-10-22-22-32-56.png)
-
-
-### 读写流程
-
+### 4.4.2. 读写流程
 
 - 写流程：
   > 面试经常问
@@ -3615,4 +3617,7 @@ HRegion由一个或者多个Store组成，每个store保存一个columns family�
     - blockcache被一个RegsionServer所共享。类此操作系统中将常用数据存储到cache中
       > 架构图中没有画
   - 找不到再去磁盘中找。将查询的结果重新写到blockcache当中
+
+
+
 

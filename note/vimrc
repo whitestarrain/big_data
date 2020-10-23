@@ -12,39 +12,101 @@ let mapleader="\<space>"
 " - Avoid using standard Vim directory names like 'plugin'
 call plug#begin('D:\learn\vim\vim82\autoload')
 
+" leader键提示插件
+" On-demand lazy load
+Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!'] }
+
+"---------------------
+
+" git插件
+Plug 'tpope/vim-fugitive'
+
+"---------------------
+
+" 显示文件每行的状态
+Plug 'airblade/vim-gitgutter'
+
+"---------------------
+
+
 "markdonw 语法高亮
 Plug 'plasticboy/vim-markdown'
+
+"---------------------
+
 
 " 主题
 Plug 'w0ng/vim-hybrid'
 
+"---------------------
+
+
 " 下方提示栏
 Plug 'vim-airline/vim-airline'
+
+"---------------------
+
 " 下方提示栏主题
 Plug 'vim-airline/vim-airline-themes'
+
+"---------------------
+
 " 增加缩进线
 Plug 'yggdroot/indentline'
+
+"---------------------
+
 " 开始菜单
 Plug 'mhinz/vim-startify'
+
+"---------------------
+
 
 " 文件树
 Plug 'scrooloose/nerdtree'
 
+"---------------------
+
+
+" 文件树 git 显示支持
+Plug 'Xuyuanp/nerdtree-git-plugin'
+
+"---------------------
+
+
 " 单文件模糊搜索跳转
 Plug 'ctrlpvim/ctrlp.vim'
 
+"---------------------
+
+
 " 位置跳转
+
+"---------------------
+
 Plug 'easymotion/vim-easymotion'
 
 " 成对编辑
+
+"---------------------
+
 Plug 'tpope/vim-surround'
+
+"---------------------
+
 
 " 多文件模糊搜索
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 
+"---------------------
+
+
 "多文件搜索替换
 Plug 'brooth/far.vim'
+
+"---------------------
+
 
 " python插件
 " Plug 'python-mode/python-mode', { 'for': 'python', 'branch': 'develop' }
@@ -52,12 +114,21 @@ Plug 'brooth/far.vim'
 " 代码大纲
 " Plug 'majutsushi/tagbar'
 
+"---------------------
+
+
 " 粘贴图片
 Plug 'ferrine/md-img-paste.vim'
+
+"---------------------
+
 
 
 "括号补全
 Plug 'jiangmiao/auto-pairs'
+
+"---------------------
+
 
 
 " java补全方案
@@ -147,7 +218,16 @@ let g:mdip_imgdir = './image'
 " python 插件配置
 " let g:python3_host_prog='D:/learn/anaconda3/envs/learn/python.exe'
 
+" vim-which-key
+nnoremap <silent> <leader> :WhichKey '<Space>'<CR>
+" By default timeoutlen is 1000 ms
+set timeoutlen=500
 
+" vim-gitgutter
+" set the default value of updatetime to 3000ms
+set updatetime=3000
+nmap <leader>hf <Plug>(GitGutterNextHunk)
+nmap <leader>hb  <Plug>(GitGutterPrevHunk)
 
 " java补全方案
 
@@ -353,7 +433,9 @@ nnoremap > >>
 nnoremap < <<
 
 "设置路径为当前文件所在路径
-noremap <silent><leader>p :cd %:h<cr>
+nnoremap <silent><leader>p :cd %:h<cr>
+
+nnoremap o A<cr>
 
 "================map end==================
 
