@@ -145,6 +145,7 @@
     > 之后会学
 
 - 历程：
+
   ```
   Hadoop简介
   名字来源于Doug Cutting儿子的玩具大象。
@@ -153,7 +154,9 @@
   Hadoop 于 2005 年秋天作为 Lucene的子项目 Nutch的一部分正式引入Apache基金会。
   2006 年 3 月份，Map-Reduce 和 Nutch Distributed File System (NDFS) 分别被纳入称为 Hadoop 的项目
   ```
+
 - Hadoop 简介：https://hadoop.apache.org/old/
+
   - 版本：1.x，2.x，3.x
   - 组成：
     - 大数据工具包：Hadoop Commom
@@ -167,7 +170,25 @@
       - 分布式计算框架（计算向数据移动）
       - 具有 易于编程、高容错性和高扩展性等优点。
   - 衍生（生态环境圈）：
-    ![](./image/hadoop-begin-1.jpg)
+    > ![](./image/hadoop-begin-1.jpg) > ![](./image/hadoop-begin-1.2.png)
+    - HDFS 分布式文件系统
+    - MapReduce 分布式并行编程模型
+    - YARN 资源管理和调度器
+    - Tez 运行在 YARN 之上的下一代 Hadoop 查询处理框架
+    - Hive Hadoop 上的数据仓库
+    - HBase Hadoop 上的非关系型的分布式数据库
+    - Pig 一个基于 Hadoop 的大规模数据分析平台，提供类似 SQL 的查询语言 Pig Latin
+    - Sqoop 用于在 Hadoop 与传统数据库之间进行数据传递
+    - Oozie Hadoop 上的工作流管理系统
+    - Zookeeper 提供分布式协调一致性服务
+    - Storm 流计算框架
+    - Flume 一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统
+    - Ambari Hadoop 快速部署工具，支持 Apache Hadoop 集群的供应、管理和监控
+    - Kafka 一种高吞吐量的分布式发布订阅消息系统，可以处理消费者规模的网站中的所有动作流数据
+    - Spark 类似于 Hadoop MapReduce 的通用并行框架
+
+- 商业版本：
+  > ![](./image/hadoop-begin-1.3.png)
 
 ## 2.2. 分布式文件系统 HDFS
 
@@ -751,7 +772,7 @@
 
 **※待做**
 
-### 2.3.6. 高可用集群搭建
+### 2.3.6. 2.0 高可用集群搭建
 
 #### 2.3.6.1. 搭建目标
 
@@ -992,7 +1013,7 @@
   - 启动三个 zookeeper 服务端进程
   - start-dfs.sh
 
-### 2.3.7. windows 下开发环境(java api 操作)
+### 2.3.7. java api 操作
 
 - 导入相关 jar 包
 - 通过代码操作
@@ -3431,6 +3452,14 @@ hive 自带，很难用。2.x 后就删了。不用搭。
 
 只有在特殊场景下才能判断好坏
 
+## 3.13. 虚拟机连接慢
+
+> 原因：dns解析问题
+
+- `cd /etc/ssh/`
+- `vi sshd_config`
+- 将 `UseDns` 改为no
+
 # 4. HBase
 
 ## 4.1. 大数据架构
@@ -3439,7 +3468,7 @@ hive 自带，很难用。2.x 后就删了。不用搭。
 
 > ![](./image/2020-10-21-19-01-24.png)
 
-## 4.2. 概念
+## 4.2. HBase 概念
 
 [官网](https://hbase.apache.org/)
 
@@ -3511,113 +3540,194 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
         > Hbase 实时读写，数据放内存，为了数据安全，通过该值判断是否从 log 中恢复数据
     - HLog SequeceFile 的 Value 是 HBase 的 KeyValue 对象，即对应 HFile 中的 KeyValue。
 
-
 ## 4.4. hive 架构
 
-### 4.4.1. 架构
+### 4.4.1. 具体架构
 
-- Hbase是主从架构，而不是主备架构，主从和主备不同
+- Hbase 是主从架构，而不是主备架构，主从和主备不同
+
   - 主备：两台机器做相同事情，一台主机器，一台备机
-  - 主从；一台总服务器，下面则是其他服务器，比如resourceManger和NodeManger
+  - 主从；一台总服务器，下面则是其他服务器，比如 resourceManger 和 NodeManger
 
 - 架构图:
-  > ![](./image/image_2020-10-23-10-39-48.png)
-  > **HLog应该在HRegion外面，HRegionServer里面。被所有Region所共享。这个官网架构图有误**
+
+  > ![](./image/image_2020-10-23-10-39-48.png) > **HLog 应该在 HRegion 外面，HRegionServer 里面。被所有 Region 所共享。这个官网架构图有误**
 
 - 角色：
-  - Client:包含访问HBase的接口并维护cache来加快对HBase的访问
-    - Client修改元数据是才需要访问HMaster，而HRegionServer可以直接访问
+
+  - Client:包含访问 HBase 的接口并维护 cache 来加快对 HBase 的访问
+    - Client 修改元数据是才需要访问 HMaster，而 HRegionServer 可以直接访问
     - cache:客户端缓存
-  - zookeeper:作为Client和HMaster间传递信息的中介
+  - zookeeper:作为 Client 和 HMaster 间传递信息的中介
     - 作用：
-      - 保证任何时候，集群中只有一个活跃master
-      - 实时监控Region server的上线和下线信息。并实时通知Master
-      - 存贮所有Region的寻址入口，也就是元数据表所在位置的表。
-      - 存储HBase的schema和table元数据
-    - 也会和HRegionServer进行通信,
-    - HMaster和HRegionServer都会主动向zookeeper进行注册
+      - 保证任何时候，集群中只有一个活跃 master
+      - 实时监控 Region server 的上线和下线信息。并实时通知 Master
+      - 存贮所有 Region 的寻址入口，也就是元数据表所在位置的表。
+      - 存储 HBase 的 schema 和 table 元数据
+    - 也会和 HRegionServer 进行通信,
+    - HMaster 和 HRegionServer 都会主动向 zookeeper 进行注册
   - HMaster
-    - 为Region server分配region，也就是把表分配到region上
-    - 负责Region server的负载均衡
-    - 发现失效的Region server并重新分配其上的region到其他RegionServer
-    - 管理用户对table的增删改操作
-  - HRegionServer:HBase的从节点，承担具体存储，查询CRUD等操作
+    - 为 Region server 分配 region，也就是把表分配到 region 上
+    - 负责 Region server 的负载均衡
+    - 发现失效的 Region server 并重新分配其上的 region 到其他 RegionServer
+    - 管理用户对 table 的增删改操作
+  - HRegionServer:HBase 的从节点，承担具体存储，查询 CRUD 等操作
     - 作用：
-      - Region server维护region，处理对这些region的IO请求
-      - Region server负责切分在运行过程中变得过大的region。表数据太大时，会将表等分，留下一半，另一半移到其他region
+      - Region server 维护 region，处理对这些 region 的 IO 请求
+      - Region server 负责切分在运行过程中变得过大的 region。表数据太大时，会将表等分，留下一半，另一半移到其他 region
     - 组成：
       - HLog:预写数据
-        > 被所有region所共享
-      - region:和表是一个层次的，每一个表对应至少一个region
-        - HBase自动把表水平划分成多个区域(region)，每个region会保存一个表里面某段连续的数据
-        - 每个表一开始只有一个region，随着数据不断插入表，region不断增大，当增大到一个阀值的时候，region就会等分会两个新的region（裂变）
-        - 当table中的行不断增多，就会有越来越多的region。这样一张完整的表被保存在多个Regionserver 上。
+        > 被所有 region 所共享
+      - region:和表是一个层次的，每一个表对应至少一个 region
+        - HBase 自动把表水平划分成多个区域(region)，每个 region 会保存一个表里面某段连续的数据
+        - 每个表一开始只有一个 region，随着数据不断插入表，region 不断增大，当增大到一个阀值的时候，region 就会等分会两个新的 region（裂变）
+        - 当 table 中的行不断增多，就会有越来越多的 region。这样一张完整的表被保存在多个 Regionserver 上。
       - Memstore:内存存储。详细看下面写流程
-      - store:列族层次,数据是写到内存中。默认64MB（hdfs块默认128MB）
-        - 一个region由多个store组成，一个store对应一个CF（列族）
-        - store包括位于内存中的memstore和位于磁盘的storefile写操作先写入memstore，当memstore中的数据达到某个阈值，hregionserver会启动flashcache进程写入storefile，每次写入形成单独的一个storefile
-        - 当storefile文件的数量增长到一定阈值后，系统会进行合并（minor(3-10个文件)、major(所有文件) compaction），在合并过程中会进行版本合并和删除(之前提到的过期版本的删除)工作（majar），形成更大的storefile
-        - 当一个region所有storefile的大小和数量超过一定阈值后，会把当前的region分割为两个，并由hmaster分配到相应的regionserver服务器，实现负载均衡
+      - store:列族层次,数据是写到内存中。默认 64MB（hdfs 块默认 128MB）
+        - 一个 region 由多个 store 组成，一个 store 对应一个 CF（列族）
+        - store 包括位于内存中的 memstore 和位于磁盘的 storefile 写操作先写入 memstore，当 memstore 中的数据达到某个阈值，hregionserver 会启动 flashcache 进程写入 storefile，每次写入形成单独的一个 storefile
+        - 当 storefile 文件的数量增长到一定阈值后，系统会进行合并（minor(3-10 个文件)、major(所有文件) compaction），在合并过程中会进行版本合并和删除(之前提到的过期版本的删除)工作（majar），形成更大的 storefile
+        - 当一个 region 所有 storefile 的大小和数量超过一定阈值后，会把当前的 region 分割为两个，并由 hmaster 分配到相应的 regionserver 服务器，实现负载均衡
           > 也就是小文件太小会合并，大文件太大会分裂
-        - 客户端检索数据，先在memstore找，找不到再找blockcache和storefile
-      - StoreFile:内存中的文件溢写成文件StoreFile
-      - HFile:StoreFile是HFile的一个封装，数据文件存储到HDFS中时本身就交HFile，但在HBase集群中称为StoreFile。两者几乎可以划等号
-      - blockcache:存放读过的数据，使用FIFO。
+        - 客户端检索数据，先在 memstore 找，找不到再找 blockcache 和 storefile
+      - StoreFile:内存中的文件溢写成文件 StoreFile
+      - HFile:StoreFile 是 HFile 的一个封装，数据文件存储到 HDFS 中时本身就交 HFile，但在 HBase 集群中称为 StoreFile。两者几乎可以划等号
+      - blockcache:存放读过的数据，使用 FIFO。
         > 架构图中没有画
 
 - 细节架构图：
+
   > ![](./image/image_2020-10-22-22-32-40.png)
-  - HRegion是HBase中分布式存储和负载均衡的最小单元。最小单元就表示不同的HRegion可以分布在不同的 HRegion server上。
-  - HRegion由一个或者多个Store组成，每个store保存一个columns family。
-  - 每个Strore又由一个memStore和0至多个StoreFile组成。如图：StoreFile以HFile格式保存在HDFS上。
-  > ![](./image/image_2020-10-23-10-42-57.png) 
+
+  - HRegion 是 HBase 中分布式存储和负载均衡的最小单元。最小单元就表示不同的 HRegion 可以分布在不同的 HRegion server 上。
+  - HRegion 由一个或者多个 Store 组成，每个 store 保存一个 columns family。
+  - 每个 Strore 又由一个 memStore 和 0 至多个 StoreFile 组成。如图：StoreFile 以 HFile 格式保存在 HDFS 上。
+    > ![](./image/image_2020-10-23-10-42-57.png)
 
 - 涉及排序：
-  - 数据往Memstore中写时，会进行排序
+  - 数据往 Memstore 中写时，会进行排序
   - 溢写出的文件间无序，当文件间合并时会进行排序
 
-> 小知识点，所有关系型数据库中的数据都是使用B+树结构存储
+> 小知识点，所有关系型数据库中的数据都是使用 B+树结构存储
 
 ### 4.4.2. 读写流程
 
 - 写流程：
+
   > 面试经常问
-  - Client提交请求
-  - Client访问zookeeper
-  - 获取zookeeper中会存放**元数据存储位置**的表meta
-  - 然后再访问某个RegionServer，从RegsionServer中拿到元数据，元数据中有所有表的所有信息
+
+  - Client 提交请求
+  - Client 访问 zookeeper
+  - 获取 zookeeper 中会存放**元数据存储位置**的表 meta
+  - 然后再访问某个 RegionServer，从 RegsionServer 中拿到元数据，元数据中有所有表的所有信息
   - 获得表的位置信息
-  - 去具体RegionServer
+  - 去具体 RegionServer
   - 找表(region)
-  - 先往Hlog中写数据和日志
-    - 注意：往内存中写HLog，然后会有一个**异步**线程将内存中的数据写到磁盘上。（也可以延迟写，每隔一定时间写一次）
-    - HLog是一个顺序写文件，然后会直接将数据append到dfs上，没有排序过程，所以很快
-    - 因为日志文件不可以无限追加，所以每隔一定时间都会在磁盘或dfs中打开一个新的文件
+  - 先往 Hlog 中写数据和日志
+    - 注意：往内存中写 HLog，然后会有一个**异步**线程将内存中的数据写到磁盘上。（也可以延迟写，每隔一定时间写一次）
+    - HLog 是一个顺序写文件，然后会直接将数据 append 到 dfs 上，没有排序过程，所以很快
+    - 因为日志文件不可以无限追加，所以每隔一定时间都会在磁盘或 dfs 中打开一个新的文件
     - 相关类
-      - LogAsync类，异步写数据
-      - LogRoller类：默认每60分钟打开一个新的日志文件。
-  - 再往内存中的store写
-  - store达到阈值后就会溢写，然后成为多个storeFile
+      - LogAsync 类，异步写数据
+      - LogRoller 类：默认每 60 分钟打开一个新的日志文件。
+  - 再往内存中的 store 写
+  - store 达到阈值后就会溢写，然后成为多个 storeFile
     - 注意：往内存中写表数据，然后会有一个**异步**线程将内存中的数据写到磁盘上。（也可以延迟写，每隔一定时间写一次）
-    - LSM树(Log Structure Merge)
+    - LSM 树(Log Structure Merge)
       > 面试可能会问※
-      - memstore和storefile整体可以称为一个LSM树
+      - memstore 和 storefile 整体可以称为一个 LSM 树
     - 溢写后小文件的合并
-      - minor:3-10个文件一合并
-      - major:将region下所有文件全部合并
+      - minor:3-10 个文件一合并
+      - major:将 region 下所有文件全部合并
 
 - 读流程
   > 面试经常问
-  - Client提交请求
-  - Client访问zookeeper
-  - 获取zookeeper中存放**元数据存储位置**的表meta
-  - 去指定RegsionServer中找数据
-  - 先去MemStore中寻找
-  - 找不到再去blockcache中查找
-    - blockcache被一个RegsionServer所共享。类此操作系统中将常用数据存储到cache中
+  - Client 提交请求
+  - Client 访问 zookeeper
+  - 获取 zookeeper 中存放**元数据存储位置**的表 meta
+  - 去指定 RegsionServer 中找数据
+  - 先去 MemStore 中寻找
+  - 找不到再去 blockcache 中查找
+    - blockcache 被一个 RegsionServer 所共享。类此操作系统中将常用数据存储到 cache 中
       > 架构图中没有画
-  - 找不到再去磁盘中找。将查询的结果重新写到blockcache当中
+  - 找不到再去磁盘中找。将查询的结果重新写到 blockcache 当中
 
+## 4.5. 搭建
 
+### 4.5.1. standalone 模式搭建
 
+- HBase 中自带 zk，standalone 配置不需要配置 zk 集群。
+- 选择没有搭建 zookeeper 的节点。node0001
+- 上传并解压 HBase 和 protobuf 包。
+- 删除 docs 文件夹（避免浪费空间）
+- 配置环境变量`vi /etc/profile` `source /etc/profile`。添加 HBASE_HOME 以及 hbase 的 bin 路径
+- 修改`conf/hbase-env.sh`，配置 java 环境变量
+- 修改 conf/hbase-site.xml
+  ```xml
+  <configuration>
+    <property>
+      <name>hbase.rootdir</name>
+      <value>file:///home/testuser/hbase</value>
+      <!-- 存放hbase相关数据 -->
+      <!-- 不需要预先创建目录，否则HBase会自动修改到别的目录 -->
+    </property>
+    <property>
+      <name>hbase.zookeeper.property.dataDir</name>
+      <value>/home/testuser/zookeeper</value>
+      <!-- 存放zookeeper相关数据 -->
+    </property>
+  </configuration>
+  ```
+- start-hbase.sh
+- 查看 web 页面 node0001:60010
+- `hbase shell`进入交互界面
+  > shell 下 backspace 是删除后面字符。ctrl+backspace 是删除前面字符
+  > Hbase 2.x 后这种设计就删除了
+  - help 查看帮助文档
+    > 命令列表
+    - ddl
+    - dml
+  - status 状态
+  - version 查看版本
+- 查看 hbase 目录：
+  - WALs 是预写日志。数据进行完持久化后，会移动到 oldWALs
+  - data
+    > 命名空间相当于 mysql 的数据库
+    - 命名空间：default。默认命名空间，数据默认存放在里面
+    - 命名空间：hbase。
+      - meta: 保存元数据
+      - namespace
+- `create`查看报错与帮助
+  ```sql
+  -- 没有指定命名空间，默认default
+  create 'tbl','cf1','cf2' -- 创建表tbl，包含列族cf1,cf2
+  ```
+- `list`查看表列表
+- default 目录下
+  - tbl/
+    - region 名称(md5 加密字符串)/
+      - cf1
+      - cf2
+- `put`查看报错和帮助
+  - `put 'tbl','2','cf1:name','zhangsan'`
+    > 一定要添加单引号，否则无法识别
+    > 表 tbl 下，rowkey 为 2 的行，列族 cf1，列 name，存放值 zhangsan
+- `get`查看报错和帮助
+  - `get tbl 2`获取数据
+- `scan`查看报错和帮助
+  - `scan 'tbl'`查看全表
+- 此时 `tbl/region名称/cf1`下依旧没有数据
+  - 是因为还没有达到溢写的大小
+  - 使用 `flush` 手动溢写
+  - 使用`cat`无法正确查看
+  - `hbase hfile --help`查看帮助
+  - `hbase hfile -p -m -f 文件名称` 查看文件内容
+    - 数据内容
+    - 元数据信息
+    - 文件信息
+    - 布隆过滤器
+    - ...
+- 插入第二条数据`put 'tal','1','cf1:age','12'`
+- 在 memstore 中会进行排序，所以 scan 时
 
+### 4.6.2. 分布式搭建

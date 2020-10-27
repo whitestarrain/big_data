@@ -11,7 +11,7 @@
 
 注意到，Encoder和Decoder都是Unsupervised Learning，由于code是未知的，对Encoder来说，我们手中的数据只能提供图像作为NN的input，却不能提供code作为output；对Decoder来说，我们只能提供图像作为NN的output，却不能提供code作为input
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto.png" width="60%"/></center>
+<center><img src="./img/auto.png" width="60%"/></center>
 
 因此Encoder和Decoder单独拿出一个都无法进行训练，我们需要把它们连接起来，这样整个神经网络的输入和输出都是我们已有的图像数据，就可以同时对Encoder和Decoder进行训练，而降维后的编码结果就可以从最中间的那层hidden layer中获取
 
@@ -21,7 +21,7 @@
 
 在PCA中，我们先把均一化后的$x$根据组件$W$分解到更低维度的$c$，然后再将组件权重$c$乘上组件的反置$W^T$得到重组后的$\hat x$，同样我们期望重构后的$\hat x$与原始的$x$越接近越好
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-pca.png" width="60%"/></center>
+<center><img src="./img/auto-pca.png" width="60%"/></center>
 
 如果把这个过程看作是神经网络，那么原始的$x$就是input layer，重构$\hat x$就是output layer，中间组件分解权重$c$就是hidden layer，在PCA中它是linear的，我们通常又叫它瓶颈层(Bottleneck layer)
 
@@ -43,7 +43,7 @@
 - 从bottleneck layer到output layer的部分都属于$Decoder$
 - bottleneck layer的output就是自编码结果$code$
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-deep.png" width="60%"/></center>
+<center><img src="./img/auto-deep.png" width="60%"/></center>
 
 注意到，如果按照PCA的思路，则Encoder的参数$W_i$需要和Decoder的参数$W_i^T$保持一致的对应关系，这可以通过给两者相同的初始值并设置同样的更新过程得到，这样做的好处是，可以节省一半的参数，降低overfitting的概率
 
@@ -53,14 +53,14 @@
 
 下图给出了Hinton分别采用PCA和Deep Auto-encoder对手写数字进行编码解码后的结果，从784维降到30维，可以看出，Deep的自编码器还原效果比PCA要更好
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-deep2.png" width="60%"/></center>
+<center><img src="./img/auto-deep2.png" width="60%"/></center>
 
 如果将其降到二维平面做可视化，不同颜色代表不同的数字，可以看到
 
 - 通过PCA降维得到的编码结果中，不同颜色代表的数字被混杂在一起
 - 通过Deep Auto-encoder降维得到的编码结果中，不同颜色代表的数字被分散成一群一群的
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-visual.png" width="60%"/></center>
+<center><img src="./img/auto-visual.png" width="60%"/></center>
 
 #### Text Retrieval
 
@@ -80,7 +80,7 @@ Auto-encoder也可以被用在文字处理上
 
 最简单的vector表示方法是Bag-of-word，维数等于所有词汇的总数，某一维等于1则表示该词汇在这篇文章中出现，此外还可以根据词汇的重要性将其加权；但这个模型是非常脆弱的，对它来说每个词汇都是相互独立的，无法体现出词汇之间的语义(semantic)
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-text.png" width="60%"/></center>
+<center><img src="./img/auto-text.png" width="60%"/></center>
 
 ##### Auto-encoder
 
@@ -88,7 +88,7 @@ Auto-encoder也可以被用在文字处理上
 
 同样为了可视化，这里将Bag-of-word降维到二维平面上，下图中每个点都代表一篇文章，不同颜色则代表不同的文章类型
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-visual2.png" width="60%"/></center>
+<center><img src="./img/auto-visual2.png" width="60%"/></center>
 
 如果用户做查询，就把查询的语句用相同的方式映射到该二维平面上，并找出属于同一类别的所有文章即可
 
@@ -104,7 +104,7 @@ Auto-encoder同样可以被用在图像检索上
 
 下图展示了Encoder的过程，并给出了原图与Decoder后的图像对比
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-img.png" width="60%"/></center>
+<center><img src="./img/auto-img.png" width="60%"/></center>
 
 这么做的好处如下：
 
@@ -114,7 +114,7 @@ Auto-encoder同样可以被用在图像检索上
 
 下图给出了分别以原图的pixel计算相似度和以auto-encoder后的code计算相似度的两种方法在图像检索上的结果，可以看到，通过pixel检索到的图像会出现很多奇怪的物品，而通过code检索到的图像则都是人脸
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-img2.png" width="60%"/></center>
+<center><img src="./img/auto-img2.png" width="60%"/></center>
 
 可能有些人脸在原图的pixel上看起来并不像，但把它们投影到256维的空间中却是相像的，可能在投影空间中某一维就代表了人脸的特征，因此能够被检索出来
 
@@ -130,15 +130,15 @@ Auto-encoder同样可以被用在图像检索上
 
     注意：这里做的不是降维而是升维，当编码后的维数比输入维数要高时，需要注意可能会出现编码前后原封不动的情况，为此需要额外加一个正则项，比如L1 regularization，强迫使code的分布是分散的
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-pre.png" width="60%"/></center>
+<center><img src="./img/auto-pre.png" width="60%"/></center>
 
 - 接下来再让这些1000维的vector通过一个$1000-1000-1000$的编码器，当其训练稳定后，再把参数$W^2$固定住，对数据集再做一次转换
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-pre2.png" width="60%"/></center>
+<center><img src="./img/auto-pre2.png" width="60%"/></center>
 
 - 接下来再用转换后的数据集去训练第三个$1000-500-1000$的自编码器，训练稳定后固定$W^3$，数据集再次更新转化为500维
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-pre3.png" width="60%"/></center>
+<center><img src="./img/auto-pre3.png" width="60%"/></center>
 
 - 此时三个隐藏层的参数$W^1$、$W^2$、$W^3$就是训练整个神经网络时的参数初始值
 
@@ -146,7 +146,7 @@ Auto-encoder同样可以被用在图像检索上
 
 - 再用反向传播去调整一遍参数，因为$W^1$、$W^2$、$W^3$都已经是很好的参数值了，这里只是做微调，这个步骤也因此得名为**Find-tune**
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-pre4.png" width="60%"/></center>
+<center><img src="./img/auto-pre4.png" width="60%"/></center>
 
 由于现在训练机器的条件比以往更好，因此pre-training并不是必要的，但它也有自己的优势
 
@@ -162,7 +162,7 @@ Auto-encoder同样可以被用在图像检索上
 
 理论上要实现自编码器，Decoder只需要做跟Encoder相反的事即可，那对CNN来说，解码的过程也就变成了交替使用去卷积层和去池化层即可
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-cnn.png" width="60%"/></center>
+<center><img src="./img/auto-cnn.png" width="60%"/></center>
 
 那什么是去卷积层(Deconvolution)和去池化层(Unpooling)呢？
 
@@ -172,7 +172,7 @@ Auto-encoder同样可以被用在图像检索上
 
 如果还要做Unpooling，就需要提前记录pooling所挑选的pixel在原图中的位置，下图中用灰色方框标注
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-unpooling.png" width="60%"/></center>
+<center><img src="./img/auto-unpooling.png" width="60%"/></center>
 
 然后做Unpooling，就要把当前的matrix放大到原来的四倍，也就是把2×2 matrix里的pixel按照原先记录的位置插入放大后的4×4 matrix中，其余项补0即可
 
@@ -195,7 +195,7 @@ Auto-encoder同样可以被用在图像检索上
 
 因此在实践中，做去卷积的时候直接对模型加卷积层即可
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-deconvolution.png" width="60%"/></center>
+<center><img src="./img/auto-deconvolution.png" width="60%"/></center>
 
 #### Other Auto-encoder
 
@@ -207,7 +207,7 @@ Auto-encoder同样可以被用在图像检索上
 
 这种方法可以增加系统的鲁棒性，因为此时的编码器Encoder不仅仅是在学习如何做编码，它还学习到了如何过滤掉噪声这件事情
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-noise.png" width="60%"/></center>
+<center><img src="./img/auto-noise.png" width="60%"/></center>
 
 参考文献：*Vincent, Pascal, et al. "Extracting and composing robust features with denoising autoencoders." ICML, 2008.*
 
@@ -233,10 +233,10 @@ Seq2Seq就是为了解决这个问题提出的，具体内容将在RNN部分介�
 
 假设将28×28维的图像通过一层2维的hidden layer投影到二维平面上，得到的结果如下所示，不同颜色的点代表不同的数字，然后在红色方框中，等间隔的挑选二维向量丢进Decoder中，就会生成许多数字的图像
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-gene.png" width="60%"/></center>
+<center><img src="./img/auto-gene.png" width="60%"/></center>
 
 此外，我们还可以对code加L2 regularization，以限制code分布的范围集中在0附近，此时就可以直接以0为中心去随机采取样本点，再通过Decoder生成图像
 
 观察生成的数字图像，可以发现横轴的维度表示是否含有圆圈，纵轴的维度表示是否倾斜
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/auto-gene2.png" width="60%"/></center>
+<center><img src="./img/auto-gene2.png" width="60%"/></center>

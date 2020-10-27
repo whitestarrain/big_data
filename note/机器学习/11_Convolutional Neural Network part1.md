@@ -16,7 +16,7 @@
 - 那第二个layer，它做的事情是detect更复杂的东西，根据第一个layer的output，它如果看到直线横线，就是窗框的一部分；如果看到棕色的直条纹就是木纹；看到斜条纹加灰色的，这个有可能是很多东西，比如说，轮胎的一部分等等
 - 再根据第二个hidden layer的output，第三个hidden layer会做更复杂的事情，比如它可以知道说，当某一个neuron看到蜂巢，它就会被activate；当某一个neuron看到车子，它就会被activate；当某一个neuron看到人的上半身，它就会被activate等等
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/neuron-classifier.png" width="60%;"></center>
+<center><img src="./img/neuron-classifier.png" width="60%;"></center>
 那现在的问题是这样子：**当我们直接用一般的fully connected的feedforward network来做图像处理的时候，往往会需要太多的参数**
 
 举例来说，假设这是一张100\*100的彩色图片，它的分辨率才100\*100，那这已经是很小张的image了，然后你需要把它拉成一个vector，总共有100\*100\*3个pixel(如果是彩色的图的话，每个pixel其实需要3个value，即RGB值来描述它的)，把这些加起来input vectot就已经有三万维了；如果input vector是三万维，又假设hidden layer有1000个neuron，那仅仅是第一层hidden layer的参数就已经有30000\*1000个了，这样就太多了
@@ -33,21 +33,21 @@
 
 在影像处理里面，如果在network的第一层hidden layer里，那些neuron要做的事情是侦测有没有一种东西、一种pattern(图案样式)出现，那大部分的pattern其实是比整张image要小的，所以对一个neuron来说，想要侦测有没有某一个pattern出现，它其实并不需要看整张image，只需要看这张image的一小部分，就可以决定这件事情了
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pattern.png" width="60%;"></center>
+<center><img src="./img/pattern.png" width="60%;"></center>
 举例来说，假设现在我们有一张鸟的图片，那第一层hidden layer的某一个neuron的工作是，检测有没有鸟嘴的存在(你可能还有一些neuron侦测有没有鸟嘴的存在、有一些neuron侦测有没有爪子的存在、有一些neuron侦测有没有翅膀的存在、有没有尾巴的存在，之后合起来，就可以侦测，图片中有没有一只鸟)，那它其实并不需要看整张图，因为，其实我们只要给neuron看这个小的红色杠杠里面的区域，它其实就可以知道说，这是不是一个鸟嘴，对人来说也是一样，只要看这个小的区域你就会知道说这是鸟嘴，所以，**每一个neuron其实只要连接到一个小块的区域就好，它不需要连接到整张完整的图，因此也对应着更少的参数**
 
 ###### The same patterns appear in different regions
 
 同样的pattern，可能会出现在image的不同部分，但是它们有同样的形状、代表的是同样的含义，因此它们也可以用同样的neuron、同样的参数，被同一个detector检测出来
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pattern-region.png" width="60%;"></center>
+<center><img src="./img/pattern-region.png" width="60%;"></center>
 举例来说，上图中分别有一个处于左上角的鸟嘴和一个处于中央的鸟嘴，但你并不需要训练两个不同的detector去专门侦测左上角有没有鸟嘴和中央有没有鸟嘴这两件事情，这样做太冗余了，我们要cost down(降低成本)，我们并不需要有两个neuron、两组不同的参数来做duplicate(重复一样)的事情，所以**我们可以要求这些功能几乎一致的neuron共用一组参数，它们share同一组参数就可以帮助减少总参数的量**
 
 ###### Subsampling the pixels will not change the object
 
 我们可以对一张image做subsampling(二次抽样)，假如你把它奇数行、偶数列的pixel拿掉，image就可以变成原来的十分之一大小，而且并不会影响人对这张image的理解，对你来说，下面两张大小不一的image看起来不会有什么太大的区别，你都可以识别里面有什么物件，因此subsampling对图像辨识来说，可能是没有太大的影响的
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/subsamp.png" width="60%;"></center>
+<center><img src="./img/subsamp.png" width="60%;"></center>
 所以，**我们可以利用subsampling这个概念把image变小，从而减少需要用到的参数量**
 
 #### The whole CNN structure
@@ -58,19 +58,19 @@
 
 当你做完先前决定的convolution和max pooling的次数后，你要做的事情是Flatten，做完flatten以后，你就把Flatten output丢到一般的Fully connected network里面去，最终得到影像辨识的结果
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/whole-cnn.png" width="60%;"></center>
+<center><img src="./img/whole-cnn.png" width="60%;"></center>
 我们基于之前提到的三个对影像处理的观察，设计了CNN这样的架构，第一个是要侦测一个pattern，你不需要看整张image，只要看image的一个小部分；第二个是同样的pattern会出现在一张图片的不同区域；第三个是我们可以对整张image做subsampling
 
 那**前面这两个property，是用convolution的layer来处理的；最后这个property，是用max pooling来处理的**
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/property.png" width="60%;"></center>
+<center><img src="./img/property.png" width="60%;"></center>
 #### Convolution
 
 假设现在我们network的input是一张6\*6的image，图像是黑白的，因此每个pixel只需要用一个value来表示，而在convolution layer里面，有一堆Filter，这边的每一个Filter，其实就等同于是Fully connected layer里的一个neuron
 
 ##### Property 1
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/filter.png" width="60%;"></center>
+<center><img src="./img/filter.png" width="60%;"></center>
 每一个Filter其实就是一个matrix，这个matrix里面每一个element的值，就跟那些neuron的weight和bias一样，是network的parameter，它们具体的值都是通过Training data学出来的，而不是人去设计的
 
 所以，每个Filter里面的值是什么，要做什么事情，都是自动学习出来的，上图中每一个filter是3\*3的size，意味着它就是在侦测一个3\*3的pattern，**当它侦测的时候，并不会去看整张image，它只看一个3\*3范围内的pixel，就可以判断某一个pattern有没有出现，这就考虑了property 1**
@@ -79,7 +79,7 @@
 
 这个filter是从image的左上角开始，做一个slide window，每次向右挪动一定的距离，这个距离就叫做stride，由你自己设定，每次filter停下的时候就跟image中对应的3\*3的matrix做一个内积(相同位置的值相乘并累计求和)，这里假设stride=1，那么我们的filter每次移动一格，当它碰到image最右边的时候，就从下一行的最左边开始重复进行上述操作，经过一整个convolution的process，最终得到下图所示的红色的4\*4 matrix
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/filter1.png" width="60%;"></center>
+<center><img src="./img/filter1.png" width="60%;"></center>
 观察上图中的Filter1，它斜对角的地方是1,1,1，所以它的工作就是detect有没有连续的从左上角到右下角的1,1,1出现在这个image里面，检测到的结果已在上图中用蓝线标识出来，此时filter得到的卷积结果的左上和左下得到了最大的值，这就代表说，该filter所要侦测的pattern出现在image的左上角和左下角
 
 **同一个pattern出现在image左上角的位置和左下角的位置，并不需要用到不同的filter，我们用filter1就可以侦测出来，这就考虑了property 2**
@@ -88,14 +88,14 @@
 
 在一个convolution的layer里面，它会有一打filter，不一样的filter会有不一样的参数，但是这些filter做卷积的过程都是一模一样的，你把filter2跟image做完convolution以后，你就会得到另外一个蓝色的4\*4 matrix，那这个蓝色的4\*4 matrix跟之前红色的4\*4matrix合起来，就叫做**Feature Map(特征映射)**，有多少个filter，对应就有多少个映射后的image
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/filter2.png" width="60%;"></center>
+<center><img src="./img/filter2.png" width="60%;"></center>
 CNN对**不同scale的相同pattern的处理**上存在一定的困难，由于现在每一个filter size都是一样的，这意味着，如果你今天有同一个pattern，它有不同的size，有大的鸟嘴，也有小的鸟嘴，CNN并不能够自动处理这个问题；DeepMind曾经发过一篇paper，上面提到了当你input一张image的时候，它在CNN前面，再接另外一个network，这个network做的事情是，它会output一些scalar，告诉你说，它要把这个image的里面的哪些位置做旋转、缩放，然后，再丢到CNN里面，这样你其实会得到比较好的performance
 
 #### Colorful image
 
 刚才举的例子是黑白的image，所以你input的是一个matrix，如果今天是彩色的image会怎么样呢？我们知道彩色的image就是由RGB组成的，所以一个彩色的image，它就是好几个matrix叠在一起，是一个立方体，如果我今天要处理彩色的image，要怎么做呢？
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rgb.png" width="60%;"></center>
+<center><img src="./img/rgb.png" width="60%;"></center>
 这个时候你的filter就不再是一个matrix了，它也会是一个立方体，如果你今天是RGB这三个颜色来表示一个pixel的话，那你的input就是3\*6\*6，你的filter就是3\*3\*3，你的filter的高就是3，你在做convolution的时候，就是把这个filter的9个值跟这个image里面的9个值做内积，可以想象成filter的每一层都分别跟image的三层做内积，得到的也是一个三层的output，每一个filter同时就考虑了不同颜色所代表的channel
 
 #### Convolution V.s. Fully connected
@@ -106,12 +106,12 @@ CNN对**不同scale的相同pattern的处理**上存在一定的困难，由于�
 
 convolution这件事情，其实就是fully connected的layer把一些weight拿掉而已，下图中绿色方框标识出的feature map的output，其实就是hidden layer的neuron的output
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/convolution-fully.png" width="60%;"></center>
+<center><img src="./img/convolution-fully.png" width="60%;"></center>
 接下来我们来解释这件事情：
 
 如下图所示，我们在做convolution的时候，把filter放在image的左上角，然后再去做inner product，得到一个值3；这件事情等同于，我们现在把这个image的6\*6的matrix拉直变成右边这个用于input的vector，然后，你有一个红色的neuron，这些input经过这个neuron之后，得到的output是3
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/filter-neuron1.png" width="60%;"></center>
+<center><img src="./img/filter-neuron1.png" width="60%;"></center>
 ##### 每个“neuron”只检测image的部分区域
 
 那这个neuron的output怎么来的呢？这个neuron实际上就是由filter转化而来的，我们把filter放在image的左上角，此时filter考虑的就是和它重合的9个pixel，假设你把这一个6\*6的image的36个pixel拉成直的vector作为input，那这9个pixel分别就对应着右侧编号1，2，3的pixel，编号7，8，9的pixel跟编号13，14，15的pixel
@@ -124,7 +124,7 @@ convolution这件事情，其实就是fully connected的layer把一些weight拿�
 
 当我们把filter做stride = 1的移动的时候，会发生什么事呢？此时我们通过filter和image matrix的内积得到另外一个output值-1，我们假设这个-1是另外一个neuron的output，那这个neuron会连接到哪些input呢？下图中这个框起来的地方正好就对应到pixel 2，3，4，pixel 8，9，10跟pixel 14，15，16
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/share-weight.png" width="60%;"></center>
+<center><img src="./img/share-weight.png" width="60%;"></center>
 你会发现output为3和-1的这两个neuron，它们分别去检测在image的两个不同位置上是否存在某个pattern，因此在Fully connected layer里它们做的是两件不同的事情，每一个neuron应该有自己独立的weight
 
 但是，当我们做这个convolution的时候，首先我们把每一个neuron前面连接的weight减少了，然后我们强迫某些neuron(比如上图中output为3和-1的两个neuron)，它们一定要共享一组weight，虽然这两个neuron连接到的pixel对象各不相同，但它们用的weight都必须是一样的，等于filter里面的元素值，这件事情就叫做weight share，当我们做这件事情的时候，用的参数，又会比原来更少
@@ -155,7 +155,7 @@ CNN的本质，就是减少参数的过程
 
 我们把output四个分为一组，每一组里面通过选取平均值或最大值的方式，把原来4个value合成一个 value，这件事情相当于在image每相邻的四块区域内都挑出一块来检测，这种subsampling的方式就可以让你的image缩小！
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/max-pooling.png" width="60%;"></center>
+<center><img src="./img/max-pooling.png" width="60%;"></center>
 讲到这里你可能会有一个问题，如果取Maximum放到network里面，不就没法微分了吗？max这个东西，感觉是没有办法对它微分的啊，其实是可以的，后面的章节会讲到Maxout network，会告诉你怎么用微分的方式来处理它
 
 ##### Convolution + Max Pooling
@@ -166,7 +166,7 @@ CNN的本质，就是减少参数的过程
 
 所以，这是一个新的比较小的image，它表示的是不同区域上提取到的特征，实际上不同的filter检测的是该image同一区域上的不同特征属性，所以每一层channel(通道)代表的是一种属性，一块区域有几种不同的属性，就有几层不同的channel，对应的就会有几个不同的filter对其进行convolution操作
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/max-pool.png" width="60%;"></center>
+<center><img src="./img/max-pool.png" width="60%;"></center>
 这件事情可以repeat很多次，你可以把得到的这个比较小的image，再次进行convolution和max pooling的操作，得到一个更小的image，依次类推
 
 有这样一个问题：假设我第一个convolution有25个filter，通过这些filter得到25个feature map，然后repeat的时候第二个convolution也有25个filter，那这样做完，我是不是会得到25^2个feature map？
@@ -175,14 +175,14 @@ CNN的本质，就是减少参数的过程
 
 因此你这边有25个channel，经过含有25个filter的convolution之后output还会是25个channel，只是这边的每一个channel，它都是一个cubic(立方体)，它的高有25个value那么高
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/channel.png" width="60%;"></center>
+<center><img src="./img/channel.png" width="60%;"></center>
 #### Flatten
 
 做完convolution和max pooling之后，就是FLatten和Fully connected Feedforward network的部分
 
 Flatten的意思是，把左边的feature map拉直，然后把它丢进一个Fully connected Feedforward network，然后就结束了，也就是说，我们之前通过CNN提取出了image的feature，它相较于原先一整个image的vetor，少了很大一部分内容，因此需要的参数也大幅度地减少了，但最终，也还是要丢到一个Fully connected的network中去做最后的分类工作
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/fatten.png" width="50%;"></center>
+<center><img src="./img/fatten.png" width="50%;"></center>
 #### CNN in Keras
 
 ##### 内容简介
@@ -191,7 +191,7 @@ Flatten的意思是，把左边的feature map拉直，然后把它丢进一个Fu
 
 本来在DNN里，input是一个由image拉直展开而成的vector，但现在如果是CNN的话，它是会考虑input image的几何空间的，所以不能直接input一个vector，而是要input一个tensor给它(tensor就是高维的vector)，这里你要给它一个三维的vector，一个image的长宽各是一维，如果它是彩色的话，RGB就是第三维，所以你要assign一个三维的matrix，这个高维的matrix就叫做tensor
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/cnn-keras1.png" width="60%;"></center>
+<center><img src="./img/cnn-keras1.png" width="60%;"></center>
 那怎么implement一个convolution的layer呢？
 
 ~~~python
@@ -220,10 +220,10 @@ model2.add( MaxPooling2D(2,2) )
 
 - 再做一次Max Pooling，变成50\*50\*5
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/cnn-keras3.png" width="60%;"></center>
+<center><img src="./img/cnn-keras3.png" width="60%;"></center>
 在第一个convolution里面，每一个filter都有9个参数，它就是一个3\*3的matrix；但是在第二个convolution layer里面，虽然每一个filter都是3\*3，但它其实不是3\*3个参数，因为它的input是一个25\*13\*13的cubic，这个cubic的channel有25个，所以要用同样高度的cubic filter对它进行卷积，于是我们的filter实际上是一个25\*3\*3的cubic，所以这边每个filter共有225个参数
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/cnn-keras2.png" width="60%;"></center>
+<center><img src="./img/cnn-keras2.png" width="60%;"></center>
 通过两次convolution和max pooling的组合，最终的image变成了50\*5\*5的size，然后使用Flatten将这个image拉直，变成一个1250维的vector，再把它丢到一个Fully Connected Feedforward network里面，network structure就搭建完成了
 
 ##### 一个重要的问题

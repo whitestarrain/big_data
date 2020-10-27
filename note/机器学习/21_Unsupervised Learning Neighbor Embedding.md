@@ -14,7 +14,7 @@ PCA和Word Embedding介绍了线性降维的思想，而Neighbor Embedding要介
 
 而Manifold Learning要做的就是把这个S型曲面降维展开，把塞在高维空间里的低维空间摊平，此时使用欧氏距离就可以描述样本点之间的相似程度
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/manifold.png" width="60%" /></center>
+<center><img src="./img/manifold.png" width="60%" /></center>
 
 #### Locally Linear Embedding
 
@@ -28,7 +28,7 @@ $$
 $$
 接下来就要做Dimension Reduction，把$x^i$和$x^j$降维到$z^i$和$z^j$，并且保持降维前后两个点之间的关系$w_{ij}$是不变的
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lle.png" width="60%" /></center>
+<center><img src="./img/lle.png" width="60%" /></center>
 
 LLE的具体做法如下：
 
@@ -49,7 +49,7 @@ LLE的具体做法如下：
 
 下图给出了原始paper中的实验结果，K太小或太大得到的结果都不太好，注意到在原先的空间里，只有距离很近的点之间的关系需要被保持住，如果K选的很大，就会选中一些由于空间扭曲才导致距离接近的点，而这些点的关系我们并不希望在降维后还能被保留
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lle2.png" width="60%" /></center>
+<center><img src="./img/lle2.png" width="60%" /></center>
 
 #### Laplacian Eigenmaps
 
@@ -63,7 +63,7 @@ LLE的具体做法如下：
 
 我们依据某些规则把样本点建立graph，那么smoothness的距离就可以使用graph中连接两个点路径上的edges数来近似
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/le.png" width="60%" /></center>
+<center><img src="./img/le.png" width="60%" /></center>
 
 ##### Review for Smoothness Assumption
 
@@ -76,7 +76,7 @@ $$
 
 其中如果点$x^i$与$x^j$是相连的，则$w_{i,j}$等于相似度，否则为0，$S$的表达式希望在$x^i$与$x^j$很接近的情况下，相似度$w_{i,j}$很大，而label差距$|y^i-y^j|$越小越好，同时也是对label平滑度的一个衡量
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/le2.png" width="60%" /></center>
+<center><img src="./img/le2.png" width="60%" /></center>
 
 ##### Application in Unsupervised Task
 
@@ -99,7 +99,7 @@ $$
 
 注：有关拉普拉斯图矩阵的相关内容可参考之前的半监督学习笔记：[15_Semi-supervised Learning](https://sakura-gh.github.io/ML-notes/ML-notes-html/15_Semi-supervised-Learning.html)
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/le3.png" width="60%" /></center>
+<center><img src="./img/le3.png" width="60%" /></center>
 
 参考文献：*Belkin, M., Niyogi, P. Laplacian eigenmaps and spectral techniques for embedding and clustering. Advances in neural information processing systems . 2002*
 
@@ -115,7 +115,7 @@ t-SNE，全称为T-distributed Stochastic Neighbor Embedding，t分布随机邻�
 
 COIL-20数据集包含了同一张图片进行旋转之后的不同形态，对其使用LLE降维后得到的结果是，同一个圆圈代表同张图像旋转的不同姿态，但许多圆圈之间存在重叠
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tsne.png" width="60%" /></center>
+<center><img src="./img/tsne.png" width="60%" /></center>
 
 ##### How t-SNE works
 
@@ -125,7 +125,7 @@ COIL-20数据集包含了同一张图片进行旋转之后的不同形态，对�
 
 将$x$降维到$z$，同样可以计算相似度$S'(z^i,z^j)$，并做归一化：$Q(z^j|z^i)=\frac{S'(z^i,z^j)}{\sum_{k\ne i}S'(z^i,z^k)}$
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tsne2.png" width="60%" /></center>
+<center><img src="./img/tsne2.png" width="60%" /></center>
 
 注意，这里的归一化是有必要的，因为我们无法判断在$x$和$z$所在的空间里，$S(x^i,x^j)$与$S'(z^i,z^j)$的范围是否是一致的，需要将其映射到一个统一的概率区间
 
@@ -179,11 +179,11 @@ t-SNE常用于将固定的高维数据可视化到二维平面上
 - 如果原先两个点距离($\Delta x$)比较近，则降维转换之后，它们的相似度($\Delta y$)依旧是比较接近的
 - 如果原先两个点距离($\Delta x$)比较远，则降维转换之后，它们的相似度($\Delta y$)会被拉得更远
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tsne3.png" width="60%" /></center>
+<center><img src="./img/tsne3.png" width="60%" /></center>
 
 也就是说t-SNE可以聚集相似的样本点，同时还会放大不同类别之间的距离，从而使得不同类别之间的分界线非常明显，特别适用于可视化，下图则是对MNIST和COIL-20先做PCA降维，再做t-SNE降维可视化的结果：
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tsne4.png" width="60%" /></center>
+<center><img src="./img/tsne4.png" width="60%" /></center>
 
 #### Conclusion
 

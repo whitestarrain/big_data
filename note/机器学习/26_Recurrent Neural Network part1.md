@@ -14,7 +14,7 @@
 
 这个时候我们就希望神经网络是有记忆的，如果NN在看到“Taipei”的时候，还能记住之前已经看过的“arrive”或是“leave”，就可以根据上下文得到正确的答案
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn-example.png" width="60%"/></center>
+<center><img src="./img/rnn-example.png" width="60%"/></center>
 
 这种有记忆力的神经网络，就叫做Recurrent Neural Network(RNN)
 
@@ -22,7 +22,7 @@
 
 注：在input之前，要先给内存里的$a_i$赋初始值，比如0
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn.png" width="60%"/></center>
+<center><img src="./img/rnn.png" width="60%"/></center>
 
 注意到，每次NN的输出都要考虑memory中存储的临时值，而不同的输入产生的临时值也尽不相同，因此改变输入序列的顺序会导致最终输出结果的改变(Changing the sequence order will change the output)
 
@@ -34,13 +34,13 @@
 - “Taipei”的vector作为$x^2$输入RNN，此时hidden layer同时考虑$x^2$和存放在memory中的$a^1$，生成$a^2$，再根据$a^2$生成$y^2$，表示“Taipei”属于某个slot的概率，此时再把$a^2$存到memory中
 - 依次类推
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn-example2.png" width="60%"/></center>
+<center><img src="./img/rnn-example2.png" width="60%"/></center>
 
 注意：上图为同一个RNN在三个不同时间点被分别使用了三次，并非是三个不同的NN
 
 这个时候，即使输入同样是“Taipei”，我们依旧可以根据前文的“leave”或“arrive”来得到不一样的输出
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn-example3.png" width="60%"/></center>
+<center><img src="./img/rnn-example3.png" width="60%"/></center>
 
 ##### Elman Network & Jordan Network
 
@@ -51,7 +51,7 @@ RNN有不同的变形：
 
 由于hidden layer没有明确的训练目标，而整个NN具有明确的目标，因此Jordan Network的表现会更好一些
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn-type.png" width="60%"/></center>
+<center><img src="./img/rnn-type.png" width="60%"/></center>
 
 ##### Bidirectional RNN
 
@@ -59,7 +59,7 @@ RNN 还可以是双向的，你可以同时训练一对正向和反向的RNN，�
 
 使用Bi-RNN的好处是，NN在产生输出的时候，它能够看到的范围是比较广的，RNN在产生$y^{t+1}$的时候，它不只看了从句首$x^1$开始到$x^{t+1}$的输入，还看了从句尾$x^n$一直到$x^{t+1}$的输入，这就相当于RNN在看了整个句子之后，才决定每个词汇具体要被分配到哪一个槽中，这会比只看句子的前一半要更好
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/rnn-bi.png" width="60%"/></center>
+<center><img src="./img/rnn-bi.png" width="60%"/></center>
 
 #### LSTM
 
@@ -76,7 +76,7 @@ LSTM有三个gate：
 - output gate决定了外界是否可以从memory cell中读取值，当**output gate**关闭的时候，memory里面的内容同样无法被读取
 - forget gate则决定了什么时候需要把memory cell里存放的内容忘记清空，什么时候依旧保存
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm.png" width="60%"/></center>
+<center><img src="./img/lstm.png" width="60%"/></center>
 
 整个LSTM可以看做是4个input，1个output：
 
@@ -93,7 +93,7 @@ LSTM有三个gate：
 - $z_f$是操控forget gate的信号
 - $a$是综合上述4个input得到的output值
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm2.png" width="60%"/></center>
+<center><img src="./img/lstm2.png" width="60%"/></center>
 
 把$z$、$z_i$、$z_o$、$z_f$通过activation function，分别得到$g(z)$、$f(z_i)$、$f(z_o)$、$f(z_f)$
 
@@ -117,13 +117,13 @@ LSTM有三个gate：
 - 当$x_3=1$时，将memory里的值输出
 - 当neuron的输入为正时，对应gate打开，反之则关闭
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm3.png" width="60%"/></center>
+<center><img src="./img/lstm3.png" width="60%"/></center>
 
 ##### LSTM Structure
 
 你可能会觉得上面的结构与平常所见的神经网络不太一样，实际上我们只需要把LSTM整体看做是下面的一个neuron即可
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm4.png" width="50%"/></center>
+<center><img src="./img/lstm4.png" width="50%"/></center>
 
 假设目前我们的hidden layer只有两个neuron，则结构如下图所示：
 
@@ -131,7 +131,7 @@ LSTM有三个gate：
 - 在原来的neuron里，1个input对应1个output，而在LSTM里，4个input才产生1个output，并且所有的input都是不相同的
 - 从中也可以看出LSTM所需要的参数量是一般NN的4倍
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm5.png" width="60%"/></center>
+<center><img src="./img/lstm5.png" width="60%"/></center>
 
 ##### LSTM for RNN
 
@@ -141,13 +141,13 @@ LSTM有三个gate：
 
 在时间点$t$，输入了一个vector $x^t$，它会乘上一个matrix，通过转换得到$z$，而$z$的每个dimension就代表了操控每个LSTM的输入值，同理经过不同的转换得到$z^i$、$z^f$和$z^o$，得到操控每个LSTM的门信号
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm6.png" width="60%"/></center>
+<center><img src="./img/lstm6.png" width="60%"/></center>
 
 下图是单个LSTM的运算情景，其中LSTM的4个input分别是$z$、$z^i$、$z^f$和$z^o$的其中1维，每个LSTM的cell所得到的input都是各不相同的，但它们却是可以一起共同运算的，整个运算流程如下图左侧所示：
 
 $f(z^f)$与上一个时间点的cell值$c^{t-1}$相乘，并加到经过input gate的输入$g(z)\cdot f(z^i)$上，得到这个时刻cell中的值$c^t$，最终再乘上output gate的信号$f(z^o)$，得到输出$y^t$
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm7.png" width="60%"/></center>
+<center><img src="./img/lstm7.png" width="60%"/></center>
 
 上述的过程反复进行下去，就得到下图中各个时间点上，LSTM值的变化情况，其中与上面的描述略有不同的是，这里还需要把hidden layer的最终输出$y^t$以及当前cell的值$c^t$都连接到下一个时间点的输入上
 
@@ -155,8 +155,8 @@ $f(z^f)$与上一个时间点的cell值$c^{t-1}$相乘，并加到经过input ga
 
 注意：下图是**同一个**LSTM在两个相邻时间点上的情况
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm8.png" width="60%"/></center>
+<center><img src="./img/lstm8.png" width="60%"/></center>
 
 上图是单个LSTM作为neuron的情况，事实上LSTM基本上都会叠多层，如下图所示，左边两个LSTM代表了两层叠加，右边两个则是它们在下一个时间点的状态
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/lstm9.png" width="60%"/></center>
+<center><img src="./img/lstm9.png" width="60%"/></center>

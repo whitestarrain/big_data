@@ -23,7 +23,7 @@ $\left[\begin{array}{c}{\theta_{1}^{2}} \\ {\theta_{2}^{2}}\end{array}\right]=\l
 
 下图是将gradient descent在投影到二维坐标系中可视化的样子，图上的每一个点都是$(\theta_1,\theta_2,loss)$在该平面的投影
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gradient-descent-visualize.png" width="60%;"></center>
+<center><img src="./img/gradient-descent-visualize.png" width="60%;"></center>
 
 红色箭头是指在$(\theta_1,\theta_2)$这点的梯度，梯度方向即箭头方向(从低处指向高处)，梯度大小即箭头长度(表示在$\theta^i$点处最陡的那条切线的导数大小，该方向也是梯度上升最快的方向)
 
@@ -46,7 +46,7 @@ gradient descent过程中，影响结果的一个很关键的因素就是learnin
 * 如果learning rate太大，像下图中的绿色线段，它的步伐太大了，它永远没有办法走到特别低的地方，可能永远在这个“山谷”的口上振荡而无法走下去
 * 如果learning rate非常大，就会像下图中的黄色线段，一瞬间就飞出去了，结果会造成update参数以后，loss反而会越来越大(这一点在上次的demo中有体会到，当lr过大的时候，每次更新loss反而会变大)
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/learning-rate.png" width="60%;"></center>
+<center><img src="./img/learning-rate.png" width="60%;"></center>
 
 当参数有很多个的时候(>3)，其实我们很难做到将loss随每个参数的变化可视化出来(因为最多只能可视化出三维的图像，也就只能可视化三维参数)，但是我们可以把update的次数作为唯一的一个参数，将loss随着update的增加而变化的趋势给可视化出来(上图右半部分)
 
@@ -70,7 +70,7 @@ gradient descent过程中，影响结果的一个很关键的因素就是learnin
 
 Adagrad就是将不同参数的learning rate分开考虑的一种算法(adagrad算法update到后面速度会越来越慢，当然这只是adaptive算法中最简单的一种)
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/adagrad-definition.png" width="60%;"></center>
+<center><img src="./img/adagrad-definition.png" width="60%;"></center>
 
 这里的w是function中的某个参数，t表示第t次update，$g^t$表示Loss对w的偏微分，而$\sigma^t$是之前所有Loss对w偏微分的方均根(根号下的平方均值)，这个值对每一个参数来说都是不一样的
 $$
@@ -95,33 +95,33 @@ Adagrad的表达式$w^{t+1}=w^t-\frac{\eta}{\sum\limits_{i=0}^t(g^i)^2}\cdot g^t
 
 我们在做gradient descent的时候，希望的是当梯度值即微分值$g^t$越大的时候(此时斜率越大，还没有接近最低点)更新的步伐要更大一些，但是Adagrad的表达式中，分母表示梯度越大步伐越小，分子却表示梯度越大步伐越大，两者似乎相互矛盾
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/adagrad-contradiction.png" width="60%;"></center>
+<center><img src="./img/adagrad-contradiction.png" width="60%;"></center>
 
 在一些paper里是这样解释的：Adagrad要考虑的是，这个gradient有多surprise，即反差有多大，假设t=4的时候$g^4$与前面的gradient反差特别大，那么$g^t$与$\sqrt{\frac{1}{t+1}\sum\limits_{i=0}^t(g^i)^2}$之间的大小反差就会比较大，它们的商就会把这一反差效果体现出来
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/adagrad-reason.png" width="60%" /></center>
+<center><img src="./img/adagrad-reason.png" width="60%" /></center>
 
 **gradient越大，离最低点越远这件事情在有多个参数的情况下是不一定成立的**
 
 如下图所示，w1和w2分别是loss function的两个参数，loss的值投影到该平面中以颜色深度表示大小，分别在w2和w1处垂直切一刀(这样就只有另一个参数的gradient会变化)，对应的情况为右边的两条曲线，可以看出，比起a点，c点距离最低点更近，但是它的gradient却越大
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/adagrad-cross-parameters.png" width="60%;"></center>
+<center><img src="./img/adagrad-cross-parameters.png" width="60%;"></center>
 实际上，对于一个二次函数$y=ax^2+bx+c$来说，最小值点的$x=-\frac{b}{2a}$，而对于任意一点$x_0$，它迈出最好的步伐长度是$|x_0+\frac{b}{2a}|=|\frac{2ax_0+b}{2a}|$(这样就一步迈到最小值点了)，联系该函数的一阶和二阶导数$y'=2ax+b$、$y''=2a$，可以发现the best step is $|\frac{y'}{y''}|$，也就是说他不仅跟一阶导数(gradient)有关，还跟二阶导师有关，因此我们可以通过这种方法重新比较上面的a和c点，就可以得到比较正确的答案
 
 再来回顾Adagrad的表达式：$w^{t+1}=w^t-\frac{\eta}{\sum\limits_{i=0}^t(g^i)^2}\cdot g^t$
 
 $g^t$就是一次微分，而分母中的$\sum\limits_{i=0}^t(g^i)^2$反映了二次微分的大小，所以Adagrad想要做的事情就是，在不增加任何额外运算的前提下，想办法去估测二次微分的值
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/adagrad-second-derivative.png" width="60%;"></center>
+<center><img src="./img/adagrad-second-derivative.png" width="60%;"></center>
 
 #### Stochastic Gradicent Descent
 
 随机梯度下降的方法可以让训练更快速，传统的gradient descent的思路是看完所有的样本点之后再构建loss function，然后去update参数；而stochastic gradient descent的做法是，看到一个样本点就update一次，因此它的loss function不是所有样本点的error平方和，而是这个随机样本点的error平方
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/stochastic-gradient-descent.png" width="60%;" /></center>
+<center><img src="./img/stochastic-gradient-descent.png" width="60%;" /></center>
 stochastic gradient descent与传统gradient descent的效果对比如下：
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/stochastic-visualize.png" width="60%;" /></center>
+<center><img src="./img/stochastic-visualize.png" width="60%;" /></center>
 
 #### Feature Scaling
 
@@ -129,7 +129,7 @@ stochastic gradient descent与传统gradient descent的效果对比如下：
 
 特征缩放，当多个特征的分布范围很不一样时，最好将这些不同feature的范围缩放成一样
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/feature-scaling.png" width="60%;" /></center>
+<center><img src="./img/feature-scaling.png" width="60%;" /></center>
 
 ##### 原理解释
 
@@ -137,7 +137,7 @@ $y=b+w_1x_1+w_2x_2$，假设x1的值都是很小的，比如1,2...；x2的值都
 
 此时去画出loss的error surface，如果对w1和w2都做一个同样的变动$\Delta w$，那么w1的变化对y的影响是比较小的，而w2的变化对y的影响是比较大的
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/feature-scaling-example.png" width="60%;"></center>
+<center><img src="./img/feature-scaling-example.png" width="60%;"></center>
 
 左边的error surface表示，w1对y的影响比较小，所以w1对loss是有比较小的偏微分的，因此在w1的方向上图像是比较平滑的；w2对y的影响比较大，所以w2对loss的影响比较大，因此在w2的方向上图像是比较sharp的
 
@@ -159,7 +159,7 @@ $y=b+w_1x_1+w_2x_2$，假设x1的值都是很小的，比如1,2...；x2的值都
 
 对第r个example的第i个component，减掉均值，除以标准差，即$x_i^r=\frac{x_i^r-m_i}{\sigma_i}$
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/feature-scaling-method.png" width="60%;"/></center>
+<center><img src="./img/feature-scaling-method.png" width="60%;"/></center>
 
 说了那么多，实际上就是==将每一个参数都归一化成标准正态分布，即$f(x_i)=\frac{1}{\sqrt{2\pi}}e^{-\frac{x_i^2}{2}}$==，其中$x_i$表示第i个参数
 
@@ -179,7 +179,7 @@ $h(x,y)≈h(x_0,y_0)+\frac{\partial h(x_0,y_0)}{\partial x}(x-x_0)+\frac{\partia
 
 对于loss图像上的某一个点(a,b)，如果我们想要找这个点附近loss最小的点，就可以用泰勒展开的思想
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/taylor-visualize.png" width="60%;" /></center>
+<center><img src="./img/taylor-visualize.png" width="60%;" /></center>
 
 假设用一个red circle限定点的范围，这个圆足够小以满足泰勒展开的精度，那么此时我们的loss function就可以化简为：
 
@@ -195,7 +195,7 @@ $L(\theta)≈L(a,b)+\frac{\partial L(a,b)}{\partial \theta_1}(\theta_1-a)+\frac{
 
 观察图形可知，当向量$(\theta_1-a,\theta_2-b)$与向量$(u,v)$反向，且刚好到达red circle的边缘时(用$\eta$去控制向量的长度)，$L(\theta)$最小
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/taylor.png" width="60%;"/></center>
+<center><img src="./img/taylor.png" width="60%;"/></center>
 
 $(\theta_1-a,\theta_2-b)$实际上就是$(\Delta \theta_1,\Delta \theta_2)$，于是$L(\theta)$局部最小值对应的参数为中心点减去gradient的加权
 $$
@@ -241,7 +241,7 @@ $$
 
 以上都是理论上的探讨，到了实践的时候，其实当gradient的值接近于0的时候，我们就已经把它停下来了，但是微分值很小，不见得就是很接近local minima，也有可能像下图一样在一个高原的地方
 
-<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gradient-limits.png" width="60%;"/></center>
+<center><img src="./img/gradient-limits.png" width="60%;"/></center>
 
 综上，==**gradient descent的限制是，它在gradient即微分值接近于0的地方就会停下来，而这个地方不一定是global minima，它可能是local minima，可能是saddle point鞍点，甚至可能是一个loss很高的plateau平缓高原**==
 

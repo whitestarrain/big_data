@@ -808,7 +808,7 @@
 
   - 定义和使用
     > 一切皆命令
-    ```shell
+    ```bash
     # 定义函数
     method(){
       echo "hello world"
@@ -917,7 +917,7 @@
         - 但因为 read 对换行符敏感，所以只能读取到第一行
         - cat 对换行符不敏感
 
-          ```shell
+          ```bash
           cat 0<<ooxx
           contentcontentcontentcontentcontentcontentcontentcontent
           contentcontentcontentcontentcontentcontentcontentcontent
@@ -930,7 +930,7 @@
       - `cat 0< test2` 直接放文件
         - 不过因为 cat 本来可以接文件，下面示例可以更好说明(9 是 socket 对应的文件)
         - 访问网页示例
-          ```shell
+          ```bash
           cd /proc/$$/fd
           exec 9<> /dev/tcp/github.com/80 # 设置socket (一切皆文件)
           echo -e "GET / HTTP/1.0 \n" 1>& 9 # 将输出重定向到文件标识符9（socket）
@@ -1004,7 +1004,7 @@
     - 强引用
     - 不可嵌套
 
-  ```shell
+  ```bash
   # 单引号会忽略转换过程
   # 双引号中可以使用转义字符
   temp=aaaa
@@ -1039,12 +1039,12 @@
   > 将扩展部分的命令执行完后，将结果放在扩展部分
   - `script code`
   - \$()
-  - \$(< file)
-  ```shell
-  lines=`ls -l | wc -l`
-  lines=$(ls -l | wc -l)
-  lines=$(< scriptfile)
-  ```
+  - ``\$(< file)``
+    ```bash
+    lines=`ls -l | wc -l`
+    lines=$(ls -l | wc -l)
+    lines=$(< scriptfile)
+    ```
 
 ## 7.5. 退出状态&逻辑判断
 
@@ -1057,7 +1057,7 @@
   - command1||commond2
   - commond1&&commond2
 
-  ```shell
+  ```bash
     控制操作符 && 和 ││ 分别代表 AND 和 OR 序列。一个 AND 序列的形式是
             command1 && command2
     command2 只有在 command1 返回 0 时才被执行。
@@ -1082,7 +1082,7 @@
     - \$((var1+var2))
       > **\$只是取值，主要是双小括号**
 
-  ```shell
+  ```bash
   a=1 # 再次提醒，不能随便加空格
   b=2
   let c=$a+$b
@@ -1094,7 +1094,7 @@
   - test
     > help test 查查看
   - []
-  ```shell
+  ```bash
   test 8 -gt 1 && echo "is true"  # 不能使用大于号，否则会被识别为重定向
   # gt是greater than的缩写，mongodb中也有用到
   [ 8 -gt 1 ] && echo "is true"
@@ -1107,22 +1107,22 @@
 > **全部通过 help 进行学习**
 
 - if
-  ```shell
+  ```bash
   if ls /; then echo 'ok'; else echo 'no ok';fi
   if [ 3 -gt 8 ]; then echo 'ok'; else echo 'no ok';fi  # 中括号就是test
   ```
 - for
-  ```shell
+  ```bash
   for ((i=0;i<10;i++));do echo $i;done
   for  i in 111 222 333 '444 444'; do echo $i; done  # in后的会根据空白符切割，识别为一个集合,如果字符串中有空格的话，就要使用引用
   ```
 - while
-  ```shell
+  ```bash
   while ls ~/god &>/dev/null;do echo 'has /god'; rm -fr ~/god;done
   ```
 - case
 
-  ```shell
+  ```bash
 
   ```
 
@@ -1133,7 +1133,7 @@
 - 不要逻辑或逻辑与混着用，否则容易混,出现歧义
 - 命令扩展后，会讲结果进行词的拆分。 echo \$IFS 查看。默认是空格和换行符
 
-```shell
+```bash
 # 写一个脚本
 # 添加用户
 # 用户密码同用户名
@@ -1157,7 +1157,7 @@ echo 'just root can add user'
 exit 5
 ```
 
-```shell
+```bash
 # 用户给定路径
 # 递归遍历文件
 # 输出文件大小最大的文件
@@ -1178,13 +1178,13 @@ echo 'file not find'
 exit 2
 ```
 
-```shell
+```bash
 # 循环遍历文件每一行，定义一个计时器num，打印num正好是文件行数.
 
 # 方式一  高级for
 #!/bin/bash
 oldifs=$IFS
-IFS=$'\n'
+IFS=${'\n'}
 num=0
 for i in  `cat test.txt`  ;do
   echo $i
