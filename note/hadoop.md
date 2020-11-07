@@ -213,7 +213,10 @@
   - 文件上传可以设置 Block 大小和副本数
     - Block 大小默认 128MB，最小 1MB。可以自行设置
     - 副本数默认 3 个。可以自行设置
-      > 比如有多个进程需要读取同一个数据块，可以把副本数设置多些，将进程分散到不同服务器，避免造成拥堵现象
+      > 比如有多个进程(比如mapreduce任务)需要读取同一个数据块，可以把副本数设置多些，将进程分散到不同服务器，避免造成拥堵现象
+      - （1）加快数据传输速度
+      - （2）容易检查数据错误
+      - （3）保证数据可靠性
   - 已上传的文件 Block 副本数可以调整，**大小不变**
   - 只支持一次写入多次读取，同一时刻只有一个写入者
   - 可以 append 追加数据
@@ -250,7 +253,9 @@
 
 ![](./image/hadoop-begin-2.jpg)
 
-- HdfsClient 能与 DataNote 直接交互，这里没画出来
+![](./image/hadoop-begin-2.5.png)
+
+- HdfsClient 能与 DataNote 直接交互，第一张图没画出来
 - Secondary NameNode:1.0 版本中比较重要。2.0 及之后就用不到了
 
 ![](./image/hadoop-begin-3.jpg)
@@ -286,8 +291,8 @@
 
 - NameNode 持久化
 
-  - 方式：
-    - metadata 存储到磁盘文件名为”fsimage”（时点备份）
+  - 持久化方式：
+    - metadata 存储到磁盘文件名为`fsimage`（时点备份）
       > 时点：每隔一段时间备份一次，看下面
       - fsimage:镜像快照
       - 是实现 java 序列化接口的对象序列化后的文件
@@ -295,7 +300,7 @@
     - edits 记录对 metadata 的操作日志
       - edits log
       - 会把客户端对 NameNode 的所有操作写到操作日志中
-      - 写入块，但恢复很慢，因为要一条一条执行
+      - 写入快，但恢复很慢，因为要一条一条执行
     - 实际会两者混用
       - 最开始启动时，hadoop 会格式化(format)，生成空白 fsimage 和 edits
       - 进行操作时，会把操作记录存储到 edits 中，不会修改 fsimage
@@ -305,7 +310,7 @@
         - 而做合并工作的，就是 **SecondNameNode(SNN)**
   - 特点：
     - NameNode 的 metadata 信息在启动后会加载到内存
-    - Block 的位置信息不会保存到 fsimage
+    - Block 的位置信息不会保存到 fsimage，而是由 DataNode 主动汇报，实时更新
 
 - SecondNameNode
   - 它不是 NN 的备份（但可以做备份），它的主要工作是帮助 NN 合并 edits log，减少 NN 启动时间。
@@ -314,6 +319,11 @@
     - 根据配置文件设置 edits log 大小 fs.checkpoint.size 规定 edits 文件的最大值默认是 64MB
   - 合并流程:
     > ![](./image/hadoop-begin-4.jpg)
+    - SecondaryNameNode 会定期和 NameNode 通信，请求其停止使用 EditLog 文件，暂时将新的写操作写到一个新的文件 edit.new 上来，这个操作是瞬间完
+    - SecondaryNameNode 通过 HTTP GET 方式从 NameNode 上获取到 FsImage 和 EditLog 文件，并下载到本地的相应目录下
+    - SecondaryNameNode 将下载下 来的 FsImage 载入到内存，然后一条一条地 执行 EditLog 文件中的各项更新操作，使得 内存中的 FsImage 保持最新；这个过程就是 EditLog 和 FsImage 文件合并
+    - SecondaryNameNode 执行完（3 ）操作之后，会通过 post 方式将新的 FsImage 文件发送到 NameNode 节点上
+    - NameNode 将从 SecondaryNameNode 接收到的新的 FsImage 替换旧的 FsImage 文件，同时将 edit.new 替换 EditLog 文件(类似一个重命名操作)，通过这个过程 EditLog 就变小了
   - 恢复流程：
     - 读取 fsimage
     - 如果 edits 文件不为空，就读取并执行
@@ -321,7 +331,25 @@
   - 2.x 之后有了 NameNode 备份，SecondeNameNode 基本没用了
     - 之后会讲持久化工作的替代者
 
-### 2.2.5. 优缺点
+### 2.2.5. 其他
+
+#### 2.2.5.1. 通信协议（了解）
+
+- HDFS 是一个部署在集群上的分布式文件系统，因此，很多数据需要 通过网络进行传输
+- 所有的 HDFS 通信协议都是构建在 TCP/IP 协议基础之上的
+- 客户端通过一个可配置的端口向名称节点主动发起 TCP 连接，并使 用客户端协议与名称节点进行交互
+- 名称节点和数据节点之间则使用数据节点协议进行交互
+- 客户端与数据节点的交互是通过 RPC（Remote Procedure Call）来 实现的。在设计上，名称节点不会主动发起 RPC，而是响应来自客户 端和数据节点的 RPC 请求
+
+#### 2.2.5.2. 客户端
+
+- 客户端是用户操作 HDFS 最常用的方式，HDFS 在部署时都提供了 客户端
+- HDFS 客户端是一个库，暴露了 HDFS 文件系统接口，这些接口隐 藏了 HDFS 实现中的大部分复杂性
+- 严格来说，客户端并不算是 HDFS 的一部分
+- 客户端可以支持打开、读取、写入等常见的操作，并且提供了 类似 Shell 的命令行方式来访问 HDFS 中的数据
+- 此外，HDFS 也提供了 Java API，作为应用程序访问文件系统的 客户端编程接口
+
+### 2.2.6. 优缺点
 
 - HDFS 优点：
   - 高容错性
@@ -349,8 +377,13 @@
   - 并发写入、文件随机修改
     - 一个文件只能有一个写者
     - 仅支持 append
+  - 单名称节点限制：
+    - （1）命名空间的限制：名称节点是保存在内存中的，因此，名称节 点能够容纳的对象（文件、块）的个数会受到内存空间大小的限制。
+    - （2）性能的瓶颈：整个分布式文件系统的吞吐量，受限于单个名称 节点的吞吐量。
+    - （3）隔离问题：由于集群中只有一个名称节点，只有一个命名空间， 因此，无法对不同应用程序进行隔离。
+    - （4）集群的可用性：一旦这个唯一的名称节点发生故障，会导致整 个集群变得不可用。
 
-### 2.2.6. 副本放置策略
+### 2.2.7. 副本放置策略
 
 - 服务器类型：
 
@@ -369,6 +402,7 @@
 - Block 的副本放置策略
   > 不同服务器策略和组网模式方式策略不同
   > hadoop-hdfs-2.6.5.jar--org.apache.hadoop.hdfs.blockmanagement--BlockPlacePolicyDefault 类中注释有副本方式策略
+  > ![](./image/hadoop-begion-7.5.png)
   - 机架服务器
     - 第一个副本：放置在上传文件的 DN；如果是集群外提交，则随机挑选一台磁盘不太满，CPU 不太忙的节点。
     - 第二个副本：放置在于第一个副本不同的 机架的节点上。
@@ -379,7 +413,7 @@
 
 > rack 机架
 
-### 2.2.7. 核心流程
+### 2.2.8. 读写流程
 
 - 写流程(动作执行者为 client)：
 
@@ -407,55 +441,78 @@
 - 读流程(动作执行者为 client)：
   > ![](./image/hadoop-begin-9.jpg)
   > 本地读取策略：就近原则多个副本时，会读取最近的空闲的服务器
-  - 和 NN 获取一部分 Block 副本位置列表
+  - 从 NN 获取一部分 Block 副本位置列表
   - 在 Block 副本列表中按距离择优选取
   - 线性和 DN 获取 Block，最终合并为一个文件
   - MD5 验证数据完整性
 
-### 2.2.8. HDFS 其他
+### 2.2.9. HDFS 其他
 
-- 文件权限
+#### 2.2.9.1. 文件权限
 
-  - HDFS 文件权限:POSIX 标准（可移植操作系统接口）
-    - POSIX:Portable Operating System Interface
-    - 与 Linux 文件权限类似
-      - r: read; w:write; x:execute
-      - 权限 x 对于文件忽略，对于文件夹表示是否允许访问其内容
-    - hdfs 只是文件系统，而不是操作系统，没有用户系统，只会读取 linux 的用户
-    - 如果 Linux 系统用户 zhangsan 使用 hadoop 命令创建一个文件，那么这个文件在 HDFS 中 owner 就是 zhangsan。
-    - HDFS 的权限目的：阻止误操作，但不绝对。HDFS 相信，你告诉我你是谁，我就认为你是谁。
+- HDFS 文件权限:POSIX 标准（可移植操作系统接口）
+  - POSIX:Portable Operating System Interface
+  - 与 Linux 文件权限类似
+    - r: read; w:write; x:execute
+    - 权限 x 对于文件忽略，对于文件夹表示是否允许访问其内容
+  - hdfs 只是文件系统，而不是操作系统，没有用户系统，只会读取 linux 的用户
+  - 如果 Linux 系统用户 zhangsan 使用 hadoop 命令创建一个文件，那么这个文件在 HDFS 中 owner 就是 zhangsan。
+  - HDFS 的权限目的：阻止误操作，但不绝对。HDFS 相信，你告诉我你是谁，我就认为你是谁。
 
-- 安全模式；
+#### 2.2.9.2. 安全模式；
 
-  > 开启时的一段时间
+> 开启时的一段时间
 
-  - namenode 启动的时候，首先将映像文件(fsimage)载入内存，并执行编辑日志(edits)中的各项操作。
-  - 一旦在内存中成功建立文件系统元数据的映射，则创建一个新的 fsimage 文件(这个操作不需要 SecondaryNameNode)和一个空的编辑日志。
-  - 此刻 namenode 运行在安全模式。即 namenode 的文件系统对于客服端来说是只读的。(显示目录，显示文件内容等。写、删除、重命名都会失败，尚未获取动态信息)。
-  - 在此阶段 Namenode 收集各个 datanode 的报告，当数据块达到最小副本数以上时，会被认为是“安全”的， 在一定比例（可设置）的数据块被确定为“安全”后，再过若干时间，安全模式结束
-  - 当检测到副本数不足的数据块时，该块会被复制直到达到最小副本数，系统中数据块的位置并不是由 namenode 维护的，而是以块列表形式存储在 datanode 中。
+- namenode 启动的时候，首先将映像文件(fsimage)载入内存，并执行编辑日志(edits)中的各项操作。
+- 一旦在内存中成功建立文件系统元数据的映射，则创建一个新的 fsimage 文件(这个操作不需要 SecondaryNameNode)和一个空的编辑日志。
+- 此刻 namenode 运行在安全模式。即 namenode 的文件系统对于客服端来说是只读的。(显示目录，显示文件内容等。写、删除、重命名都会失败，尚未获取动态信息)。
+- 在此阶段 Namenode 收集各个 datanode 的报告，当数据块达到最小副本数以上时，会被认为是“安全”的， 在一定比例（可设置）的数据块被确定为“安全”后，再过若干时间，安全模式结束
+- 当检测到副本数不足的数据块时，该块会被复制直到达到最小副本数，系统中数据块的位置并不是由 namenode 维护的，而是以块列表形式存储在 datanode 中。
 
 - 角色==进程
-  - namenode
-    - 数据元数据
-    - 内存存储，不会有磁盘交换
-    - 持久化（fsimage，edits log）
-      - 不会持久化 block 的位置信息
-    - block：偏移量，因为 block 不可以调整大小，hdfs，不支持修改文件
-      - 偏移量不会改变
-  - datanode
-    - block 块数据，块元数据信息
-    - 磁盘
-    - 面向文件，大小一样，不能调整
-    - 副本数，可调整，（备份，高可用，容错/可以调整很多个，为了计算向数据移动）
-  - SN(2.x 版本中就没了)
-  - NN&DN
-    - 心跳机制
-    - DN 向 NN 汇报 block 信息
-    - 安全模式
-  - client(api 环境中通过 java 来写)
+- namenode
+  - 数据元数据
+  - 内存存储，不会有磁盘交换
+  - 持久化（fsimage，edits log）
+    - 不会持久化 block 的位置信息
+  - block：偏移量，因为 block 不可以调整大小，hdfs，不支持修改文件
+    - 偏移量不会改变
+- datanode
+  - block 块数据，块元数据信息
+  - 磁盘
+  - 面向文件，大小一样，不能调整
+  - 副本数，可调整，（备份，高可用，容错/可以调整很多个，为了计算向数据移动）
+- SN(2.x 版本中就没了)
+- NN&DN
+  - 心跳机制
+  - DN 向 NN 汇报 block 信息
+  - 安全模式
+- client(api 环境中通过 java 来写)
 
-### 2.2.9. 根据官网部署伪分布式
+#### 2.2.9.3. 数据错误与恢复
+
+- 名称节点出错
+  - 名称节点保存了所有的元数据信息，
+  - 最核心的两大数据 结构是FsImage和Editlog， 如果这两个文件发生损坏，那么整个 HDFS实例将失效。
+  - 因此，HDFS设置了备份机制，把这些核心文件 同步复制到备份服务器SecondaryNameNode上。
+  - 当名称节点出错时， 就可以根据备份服务器SecondaryNameNode中的FsImage和Editlog 数据进行恢复。
+
+- 数据节点出错
+  - 每个数据节点会定期向名称节点发送“心跳”信息，向名称节点报告自 己的状态
+  - 当数据节点发生故障，或者网络发生断网时，名称节点就无法收到来自 一些数据节点的心跳信息，这时，这些数据节点就会被标记为宕机，
+  - 节点上面的所有数据都会被标记为不可读，名称节点不会再给它们 发送任何I/O请求
+  - 这时，有可能出现一种情形，即由于一些数据节点的不可用，会导致一 些数据块的副本数量小于冗余因子
+  - 名称节点会定期检查这种情况，一旦发现某个数据块的副本数量小于冗 余因子，就会启动数据冗余复制，为它生成新的副本
+  - HDFS和其它分布式文件系统的最大区别就是可以调整冗余数据的位置
+
+- 数据出错
+  - 网络传输和磁盘错误等因素，都会造成数据错误
+  - 客户端在读取到数据后，会采用md5和sha1对数据块进行校验，以确定读取到正确的数据
+  - 在文件被创建时，客户端就会对每一个文件块进行信息摘录，并把这些信息 写入到同一个路径的隐藏文件里面
+  - 当客户端读取文件的时候，会先读取该信息文件，然后，利用该信息文件对 每个读取的数据块进行校验
+  - 如果校验出错，客户端就会请求到另外一个数据节点读取该文件块，并且向名称节点报告这个文件块有错误，名称节点会定期检查并且重新复制这个块
+
+### 2.2.10. 根据官网部署伪分布式
 
 > 具体请查看搭建文档 ![](./hadoop搭建文档.txt)
 
@@ -535,8 +592,13 @@
   - 可以在浏览器进入`192.168.187.lol:50070`查看负载情况
     > `ss -nal` 查看 socket 监听接口
     - Live Nodes 指的是 DataNode 节点
+  - 进入交互界面：
+    - hadoop fs：适用于任何不同的文件系统，比如本地文件系统和HDFS文件系统。
+    - hadoop dfs：只能适用于HDFS文件系统。
+    - hdfs dfs：跟hadoop dfs的命令作用一样，也只能适用于HDFS文件系统。(选择)
+      > hdfs dfs 可以查看所有文件管理命令，贴近于 linux
   - NameNode 创建路径，再上传文件
-    - hdfs dfs 可以查看所有文件管理命令，贴近于 linux
+    - hdfs dfsadmin -report 查看集群状态
     - hdfs dfs -mkdir -p /user/root
       > 上传文件的默认路径
     - hdfs dfs -ls 查看所有文件夹
@@ -550,7 +612,7 @@
       > ![](./image/hadoop-begin-17.jpg)
   - 关闭：stop-dfs.sh
 
-### 2.2.10. 相关思考
+### 2.2.11. 相关思考
 
 - 列出 Hadoop 集群的 Hadoop 守护进程和相关的角色
 - 为什么 hadoop 的 namenode 基于内存存储？他的优势和弊端是什么？
@@ -1015,6 +1077,8 @@
 
 ### 2.3.7. java api 操作
 
+#### 2.3.7.1. 示例代码
+
 - 导入相关 jar 包
 - 通过代码操作
 
@@ -1125,6 +1189,126 @@
     }
   }
   ```
+
+#### 2.3.7.2. api
+
+- 上传：
+  - fs.copyFromLocalFile(new Path("c:/ss.txt"), new Path("/a"));
+  - 使用IOUtils自行实现
+    ```java
+    Path file = new Path("/learn/ok.txt");// 上传位置
+    FSDataOutputStream output = fs.create(file); // 上传对象，打开创建输出流。从内存输出到hdfs
+    InputStream input = new BufferedInputStream(new FileInputStream(new File("c:\\nginx")) ) ;//读取文件。从磁盘输入到内存
+    // hadoop提供 io 工具类，将输入流中的数据复制到输出流。
+    IOUtils.copyBytes(input, output, conf, true);
+    ```
+- 下载：
+  - fs.copyToLocalFile(new Path("/a/qqq.txt"), new Path("c:/qqq.txt"));
+  - 使用IOUtils自行实现
+    ```java
+    // 只是输入流和输出流与hdfs和本地文件系统的对应关系换了下
+    Path path = new Path("/learn/test.txt") //下载文件位置
+    FSDataInputStream input = fs.open(path);// 创建一个输入流。从hdfs输入到本地内存
+    OutputStream output = new BufferedOutputStream(new FileInputStream(new File("D:\\test.txt")))// 从本地内存输出到磁盘
+    IOUtils.copyBytes(input, output, conf, true);
+    ```
+- 上传下载相关：
+  ```
+  插曲：HDFS集群的上传和下载的底层就是采用流的方式，引深出来文件系统的两个API
+  分别上open()打开一个输入流，create()创建一个输出流。输入输出都是针对本地文件系统来说的
+  这样其实我们不用调用copyFromLocalFile和copyToLocalFile的API
+  我们自己采用流的方式进行实现，在本地系统中new一个输入流，然后创建HDFS集群的输出流对象
+  然后把输入流上的数据拷贝到输出流上去就可以了。
+  ```
+
+- 读取：
+  ```java
+  FSDataInputStream input = fs.open(path);
+  input.read***()
+  ```
+- 文件系统api操作：
+  - fs.mkdir
+  - fs.rename:重命名或者移动
+  - fs.delete: 删除文件或文件夹
+  - fs.isFile: 是否为文件
+  - fs.exists: 判断文件是否存在
+- 获取某块一部分数据的位置信息(数组)
+  ```java
+  Path path = new Path("/user/root/test.txt"); // hdfs中的文件路径
+  FileStatus ffs = fs.getFileStatus(path); // 获取文件状态信息
+  BlockLocation[] blks = fs.getFileBlockLocations(ffs , 0, ffs.getLen());
+
+  // 使用LocatedFileStatus 对象可以获得一整块的位置信息
+  ```
+- 遍历相关
+  - 列出指定hdfs目录的信息：fs.listFiles
+    ```java
+    RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(new Path(path), true);
+    // 列出某个文件夹下的所有文件，参数1是路径，参数2是表示是否级联（该文件夹下面还有 子文件 要不要看,注意没有 子文件夹!!）
+
+    while(listFiles.hasNext()) {
+          LocatedFileStatus file = listFiles.next(); //文件的存储路径，以hdfs://开头的全路径----> hdfs://hadoop02:9000/a/gg.txt
+          System.out.println(file.getPath());
+          //只是文件名 gg.txt
+          System.out.println(file.getPath().getName());
+          //块大小
+          System.out.println(file.getBlockSize());
+          //分组信息
+          System.out.println(file.getGroup());
+          //文件的长度
+          System.out.println(file.getLen());
+          //文件所有者
+          System.out.println(file.getOwner());
+
+          //类，就是object的那个方法没有什么特殊的。
+          //会返回一个你的对象所对应的一个Class的对象，
+          // 这个返回来的对象保存着你的原对象的类信息，比如你的原对象的类名叫什么，类里有什么方法，字段等。
+          System.out.println(file.getClass());
+          //权限信息
+          System.out.println(file.getPermission());
+          //副本个数，从元数据中找出来几个的
+          System.out.println(file.getReplication());
+          
+          //块位置相关的信息
+          BlockLocation[] blockLocations = file.getBlockLocations();
+          //blockLocations对象的长度就是块的数量
+          System.out.println(blockLocations.length);
+          
+          for(BlockLocation bl : blockLocations) {
+            //得到每一个块到底在哪个机器里(案例一个文件有3个块，三个副本)
+            String[] hosts = bl.getHosts();
+            //为了方便就不循环了，最终的显示 hadoop03-hadoop05-hadoop02,hadoop02-hadoop03-hadoop05,hadoop02-hadoop05-hadoop04
+            System.out.println(hosts[0]+"-"+hosts[1]+hosts[2]);
+            //逻辑的一个路径
+            bl.getTopologyPaths();
+      }
+    }
+    fs.close();
+    ```
+  - 列出指定hdfs目录所有状态信息:fs.listStatus(new Path(parh));
+    > 状态,此方法与listFiles不同,不支持传true或false,即不能级联，如果想实现级联就采用递归的方式
+    ```java
+    //展示状态信息
+    FileStatus[] fileStatuses = fs.listStatus(new Path(parh));
+    //遍历所有文件
+    for (FileStatus fs:fileStatuses){
+        if (fs.isFile()){
+            System.out.println("文件-----f------" + fs.getPath().getName());
+        }else {
+            System.out.println("文件-----d------" + fs.getPath().getName());
+        }
+    }
+    ```
+
+#### 2.3.7.3. 读流程
+
+![hadoop-hdfs-read](./image/hadoop-hdfs-read.png)
+
+#### 2.3.7.4. 写流程
+
+![hadoop-hdfs-write](./image/hadoop-hdfs-write.png)
+
+> 管道，或者流水线，详情看上面理论方面的写流程
 
 ## 2.4. 分布式计算框架 MR
 
@@ -3454,11 +3638,11 @@ hive 自带，很难用。2.x 后就删了。不用搭。
 
 ## 3.13. 虚拟机连接慢
 
-> 原因：dns解析问题
+> 原因：dns 解析问题
 
 - `cd /etc/ssh/`
 - `vi sshd_config`
-- 将 `UseDns` 改为no
+- 将 `UseDns` 改为 no
 
 # 4. HBase
 
@@ -3467,6 +3651,7 @@ hive 自带，很难用。2.x 后就删了。不用搭。
 较老的一个架构图 Mahout,Pig 等都已经淘汰了。用来讲一下大数据技术的架构
 
 > ![](./image/2020-10-21-19-01-24.png)
+> ![hadoop-family](./image/hadoop-family.png) 
 
 ## 4.2. HBase 概念
 
@@ -3505,6 +3690,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
 
   - key:Rowkey+列族名+列名+时间戳
   - value:val
+    > ![hbase-data-keyss](./image/hbase-data-keyss.png) 
 
 - Row key:
   - 一个 row key 决定一行数据
@@ -3540,7 +3726,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
         > Hbase 实时读写，数据放内存，为了数据安全，通过该值判断是否从 log 中恢复数据
     - HLog SequeceFile 的 Value 是 HBase 的 KeyValue 对象，即对应 HFile 中的 KeyValue。
 
-## 4.4. hive 架构
+## 4.4. HBase 架构
 
 ### 4.4.1. 具体架构
 
@@ -3578,6 +3764,8 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
     - 组成：
       - HLog:预写数据
         > 被所有 region 所共享
+        - 每次启动都检查该文件，确认最近一次执行缓存刷新操作之后是否发生新的写入操作
+        - 如果发现更新，则先写入MemStore，再刷写到StoreFile，最后删除旧的 Hlog文件,开始为用户提供服务
       - region:和表是一个层次的，每一个表对应至少一个 region
         - HBase 自动把表水平划分成多个区域(region)，每个 region 会保存一个表里面某段连续的数据
         - 每个表一开始只有一个 region，随着数据不断插入表，region 不断增大，当增大到一个阀值的时候，region 就会等分会两个新的 region（裂变）
@@ -3585,10 +3773,11 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
       - Memstore:内存存储。详细看下面写流程
       - store:列族层次,数据是写到内存中。默认 64MB（hdfs 块默认 128MB）
         - 一个 region 由多个 store 组成，一个 store 对应一个 CF（列族）
-        - store 包括位于内存中的 memstore 和位于磁盘的 storefile 写操作先写入 memstore，当 memstore 中的数据达到某个阈值，hregionserver 会启动 flashcache 进程写入 storefile，每次写入形成单独的一个 storefile
+        - store 包括位于内存中的 memstore 和位于磁盘的 storefile 。写操作先写入 memstore，当 memstore 中的数据达到某个阈值，hregionserver 会启动 flashcache 进程写入 storefile并清空缓存，并在Hlog里面写入一个标记，每次写入形成单独的一个 storefile
         - 当 storefile 文件的数量增长到一定阈值后，系统会进行合并（minor(3-10 个文件)、major(所有文件) compaction），在合并过程中会进行版本合并和删除(之前提到的过期版本的删除)工作（majar），形成更大的 storefile
-        - 当一个 region 所有 storefile 的大小和数量超过一定阈值后，会把当前的 region 分割为两个，并由 hmaster 分配到相应的 regionserver 服务器，实现负载均衡
-          > 也就是小文件太小会合并，大文件太大会分裂
+        - 当一个 region 所有 storefile 的大小和数量超过一定阈值后，会把当前的 region 分割为两个，storefile也会分裂，并由 hmaster 分配到相应的 regionserver 服务器，实现负载均衡
+          > 也就是小 storefile 太小会合并，大 region 太大会分裂
+          > region 分裂只是将文件散步到其他节点上，不涉及文件的分割
         - 客户端检索数据，先在 memstore 找，找不到再找 blockcache 和 storefile
       - StoreFile:内存中的文件溢写成文件 StoreFile
       - HFile:StoreFile 是 HFile 的一个封装，数据文件存储到 HDFS 中时本身就交 HFile，但在 HBase 集群中称为 StoreFile。两者几乎可以划等号
@@ -3608,6 +3797,23 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
   - 数据往 Memstore 中写时，会进行排序
   - 溢写出的文件间无序，当文件间合并时会进行排序
 
+- 三级寻址
+  > ![hbase-tables](./image/hbase-tables.png) 
+  > ![hbase-tables-2](./image/hbase-tables-2.png) 
+  - 三级
+    - Zookeeper文件记录了-ROOT-表的位置
+    - -ROOT-表只存在于唯一一个Region，名字是在程序中被写死的
+      - 根数据表，又名-ROOT-表， **记录所有元数据的具体位置**
+      - 一个-ROOT-表最多只能有一个Region，也就是最多只能有128MB，
+      - 一个-ROOT-表可以寻址2的17次方个.META.表 的Region
+    - 当HBase表很大时， 包括.META.表都会分裂成多个Region
+      - 元数据表，又名.META.表，存储了Region和Region服务器的映射关系
+      - 为了加快访问速度，.META.表的全部Region都会被保存在内存中
+      - 同理，表最大为128MB,一个META也能寻址2的17次方个region
+  - 其他
+    - 为了加速寻址，客户端会缓存位置信息，同时，需要解决缓存失效问题
+    - 寻址过程客户端只需要询问Zookeeper服务器，不需要连接Master服务器
+
 > 小知识点，所有关系型数据库中的数据都是使用 B+树结构存储
 
 ### 4.4.2. 读写流程
@@ -3619,6 +3825,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
   - Client 提交请求
   - Client 访问 zookeeper
   - 获取 zookeeper 中会存放**元数据存储位置**的表 meta
+    > Zookeeper 的 Znode 的大小限制为 1M
   - 然后再访问某个 RegionServer，从 RegsionServer 中拿到元数据，元数据中有所有表的所有信息
   - 获得表的位置信息
   - 去具体 RegionServer
@@ -3654,7 +3861,9 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
 
 ## 4.5. 搭建
 
-### 4.5.1. standalone 模式搭建
+### 4.5.1. standalone
+
+#### 4.5.1.1. 搭建
 
 - HBase 中自带 zk，standalone 配置不需要配置 zk 集群。
 - 选择没有搭建 zookeeper 的节点。node0001
@@ -3680,54 +3889,393 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
   ```
 - start-hbase.sh
 - 查看 web 页面 node0001:60010
-- `hbase shell`进入交互界面
-  > shell 下 backspace 是删除后面字符。ctrl+backspace 是删除前面字符
-  > Hbase 2.x 后这种设计就删除了
-  - help 查看帮助文档
-    > 命令列表
-    - ddl
-    - dml
-  - status 状态
-  - version 查看版本
-- 查看 hbase 目录：
-  - WALs 是预写日志。数据进行完持久化后，会移动到 oldWALs
-  - data
-    > 命名空间相当于 mysql 的数据库
-    - 命名空间：default。默认命名空间，数据默认存放在里面
-    - 命名空间：hbase。
-      - meta: 保存元数据
-      - namespace
-- `create`查看报错与帮助
-  ```sql
-  -- 没有指定命名空间，默认default
-  create 'tbl','cf1','cf2' -- 创建表tbl，包含列族cf1,cf2
-  ```
-- `list`查看表列表
-- default 目录下
-  - tbl/
-    - region 名称(md5 加密字符串)/
-      - cf1
-      - cf2
-- `put`查看报错和帮助
-  - `put 'tbl','2','cf1:name','zhangsan'`
-    > 一定要添加单引号，否则无法识别
-    > 表 tbl 下，rowkey 为 2 的行，列族 cf1，列 name，存放值 zhangsan
-- `get`查看报错和帮助
-  - `get tbl 2`获取数据
-- `scan`查看报错和帮助
-  - `scan 'tbl'`查看全表
-- 此时 `tbl/region名称/cf1`下依旧没有数据
-  - 是因为还没有达到溢写的大小
-  - 使用 `flush` 手动溢写
-  - 使用`cat`无法正确查看
-  - `hbase hfile --help`查看帮助
-  - `hbase hfile -p -m -f 文件名称` 查看文件内容
-    - 数据内容
-    - 元数据信息
-    - 文件信息
-    - 布隆过滤器
-    - ...
-- 插入第二条数据`put 'tal','1','cf1:age','12'`
-- 在 memstore 中会进行排序，所以 scan 时
 
-### 4.6.2. 分布式搭建
+#### 4.5.1.2. 测试及使用
+
+- 基本测试：
+  - `hbase shell`进入交互界面
+    > shell 下 backspace 是删除后面字符。ctrl+backspace 是删除前面字符
+    > Hbase 2.x 后这种设计就删除了
+    - help 查看帮助文档
+      > 命令列表
+      - general
+      - ddl
+      - namespace
+      - dml
+    - status 状态
+    - version 查看版本
+  - 查看 hbase 目录：
+    - WALs 是预写日志。数据进行完持久化后，会移动到 oldWALs
+    - data
+      > 命名空间相当于 mysql 的数据库
+      - 命名空间：default。默认命名空间，数据默认存放在里面
+      - 命名空间：hbase。
+        - meta: 保存元数据
+        - namespace
+  - `create`查看报错与帮助
+    ```sql
+    -- 没有指定命名空间，默认default
+    create 'tbl','cf1','cf2' -- 创建表tbl，包含列族cf1,cf2
+    ```
+  - `list`查看表列表
+  - default 目录下
+    - tbl/
+      - region 名称(md5 加密字符串)/
+        - cf1
+          - 数据文件 storefile(现在没有)
+        - cf2
+          - 数据文件 storefile(现在没有)
+  - `put`查看报错和帮助
+    - `put 'tbl','2','cf1:name','zhangsan'`
+      > 一定要添加单引号，否则无法识别
+      > 表 tbl 下，rowkey 为 2 的行，列族 cf1，列 name，存放值 zhangsan
+  - `get`查看报错和帮助
+    - `get tbl 2`获取数据
+  - `scan`查看报错和帮助
+    - `scan 'tbl'`查看全表
+- 手动溢写
+  - 此时 `tbl/region名称/cf1`下依旧没有数据
+    - 是因为还没有达到溢写的大小
+    - 使用 `flush` 手动溢写
+    - 使用`cat`无法正确查看
+    - `hbase hfile --help`查看帮助(**在 bash 中**)
+    - `hbase hfile -p -m -f 文件名称` 查看文件内容(**在 bash 中**)
+      - 数据内容
+      - 元数据信息
+      - 文件信息
+      - 布隆过滤器
+      - 操作
+        > ![](./image/image_2020-10-27-21-54-10.png)
+      - ...
+- 排序问题
+  - 插入第二行数据`put 'tal','1','cf1:age','12'`
+  - 两条数据的排序问题：
+    - 默认数据到了 memstore 中，就会按照字典序排序
+    - 就算数据已经溢写掉了，memstore 中也会有已经溢写数据的索引，在再次溢写时，会把数据按顺序插入到文件中
+- value 的 version 测试：
+  - `put 'tbl','2','cf1:name','lisi'`给第二列数据**添加新的版本**
+  - 此时数据会在 memstore 中存储，而不会写到文件中
+  - 用`hbase hfile -p -m -f 文件名称`查看溢写文件，会发现旧数据（zhangsan）依旧存在
+  - 只是会标上失效标记
+  - 现在进行 flush
+- 文件合并
+
+  - 第三次 flush 触发的动作：
+    - 现在已经进行了 3 个 put 和三次 flush，所以会有 3 个小 storefile
+    - 到达了 mindor 合并(3-10)的最小要求，会进行合并，成为一个文件
+    - 三个文件合并生成**第四个**文件
+    - /home/testuser/hbase 下生成 archive 文件夹
+    - 将三个文件以相同的结构(即)移动到该文件夹下
+      ```
+      - data
+        - archive
+          - default
+            - tbl/
+              - region 名称(md5 加密字符串)/
+                - cf1
+                  - storefile1
+                  - storefile2
+                  - storefile3
+                - cf2
+      ```
+    - 使用`hbase hfile -p -m -f storefile3` 可以发现 lisi
+  - 结果：
+    - 查看 cf1 文件夹下只有一个 storefile
+    - `hbase hfile -p -m -f 文件名称`查看会发现旧数据(zhangsan)会被删去，有新数据(lisi)
+    - 因为是手动 flush 溢写的，当前文件依旧很小，所以当文件数量到达 3 个时，依旧会合并。直到达到一定的大小，才会停止合并。
+
+- 其他命令测试
+  - `delete` 查看帮助输出
+    - `delete 'tbl','2','cf1:name'`删除数据
+    - `scan 'tbl'`查看数据，只剩下一条
+  - `truncate 'tbl'`删除表中所有数据
+    > mysql 复习：truncate 不需要经过事务，delete 需要经过事务
+  - `drop 'tbl'`会报错
+    - 必须先禁用表，才能删除
+    - `disable 'tbl'`
+    - `drop 'tbl'`
+- 查看命名空间 hbase 的元数据
+  - `list name_space_tables 'hbase'` 列出命名空间 hbase 下的所有表
+    > `list` 默认是列出 default 目录下的表
+  - `scan hbase:meta` 指定命名空间 hbase 下的元数据信息表
+    - 只有一个 rowkey，也就是只有一行记录
+  - `create 'hbase:test','cf'`，hbase 命名空间下创建 test 表，test 表中创建 cf 列族
+  - `list name_space_tables 'hbase'` 发现多出一张表
+  - `scan hbase:meta` 发现多出一行元数据信息(有两个 rowkey)，记录 regionserver 信息
+- 关于访问顺序：
+
+  - 要访问一张表
+  - 访问 zk，找到上述的元数据表位置，上面就是 hbase:meta 的位置
+  - 然后再访问 hbase:meta 表的数据，获取表的位置
+  - 最后访问表
+
+- **剩余所有命令查看文档自行测试**
+
+### 4.5.2. 伪分布式 pseudo
+
+查看文档
+
+### 4.5.3. 全分布式搭建
+
+#### 4.5.3.1. 搭建前检查
+
+- 网络
+- hosts
+- ssh
+  - 关于 ssh 免密钥简便操作:
+  - `ssh-keygen`,`ssh-copy-id -i ~/.ssh/id_rsa.pud node0002`
+  - 注意，默认是 rsa 格式，而 hadoop 官网文档中 ssh 公钥私钥为 dsa 格式，涉及相关配置时记得修改为 rsa
+- 时间：各个节点时间必须一致。
+  - `data -s '时间'`
+  - 时间服务器：
+    - `yum install ntpdate -y`
+    - 使用阿里的时间服务器进行时间同步`ntpdate ntp1.aliyun.com`
+    - 写一个开机脚本，自动进行时间同步
+- jdk 版本
+
+#### 4.5.3.2. 搭建
+
+|          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RM  | NM  | mysql | mate store | hive | regionserver | HMaster | backup-masters |
+| :------: | :--: | :--: | :-: | :-: | :--: | :-: | :-: | :-: | :---: | :--------: | :--: | :----------: | :-----: | :------------: |
+| Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |  \*   |            |      |              |   \*    |                |
+| Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |       |            |      |      \*      |         |                |
+| Node0003 |      |      | \*  | \*  |      | \*  | \*  | \*  |       |     \*     |      |      \*      |         |                |
+| Node0004 |      |      | \*  | \*  |      |     | \*  | \*  |       |            |  \*  |      \*      |         |       \*       |
+
+> hbase 在哪个节点启动，哪个节点就是 HMaster
+
+- hbase-env.sh 配置
+  - JAVA_HOME
+  - HBASE_MANAGES_ZK=false：hbase 是否使用本身的 zookeeper
+- hbase-site.xml
+  ```xml
+  <configuration>
+    <property>
+      <name>hbase.rootdir</name>
+      <value>hdfs://mycluster/hbase</value>
+      <!-- 改为hdfs集群名称此处为myclster -->
+    </property>
+    <property>
+      <name>hbase.cluster.distributed</name>
+      <value>true</value>
+    </property>
+    <property>
+      <name>hbase.zookeeper.quorum</name>
+      <!--端口号写不写都行-->
+      <value>node0002,node0003,node0004</value>
+    </property>
+  </configuration>
+  ```
+- regionservers
+  ```xml
+  node0002
+  node0003
+  node0004
+  ```
+- 创建 backup-masters。HBase 的备机
+  - 在 node0001 启动，node0004 作为备
+  ```
+  node4
+  ```
+- 拷贝 hdfs-site.xml 到 hbase/conf
+- 把 hbase 分发到其他所有节点
+- 四台机器添加 hbase 的环境变量
+- 启动 hdfs
+- 在 node0001 上启动 hbase`start-hbase.sh`
+
+#### 4.5.3.3. 测试
+
+- 现在哪个节点都可以进入 hbase shell
+- kill node0001 的 HMaster 进程
+- 重新启动 hmaster：`hbase-daemon.sh start master`
+  > 注意，没有 h，是 master
+- 查看 zk 中的数据：
+  - `zkCli.sh`
+  - `ls /hbase`
+- hbase shell 中创建表
+- 再次查看zk 中 hbase/table 下的目录，会发现多出来一项，且与表名相同
+- `get /hbase/meta-region-server`查看
+  - 会发现元数据存放的节点名称
+  - 注意：只是元数据信息存储在 node0004 上，而任何一个节点上都可以通过 hbase shell 查看元数据表
+  - 只是每次查看表时都会去 node0004 查找元数据信息
+  - 具体读流程看上面
+- 去 hdfs 查看`/hbase`目录中的文件
+- 数据的插入 storefile 的查看
+  - put 插入数据
+  - `hbase hfile -p -f /hbase/data/default/tbl/region名称/列族/storefile`查看数据文件内容
+
+## 4.6. java api
+
+hbase 有多种 api 可以进行访问：
+
+> ![hbase-all-api](./image/hbase-all-api.png) 
+>
+> ![](./image/image_2020-10-29-16-07-37.png)
+
+- 连接集群：Connection connection = ConnectionFactory.createConnection(configuration);
+- 获取HBase管理员对象:admin = connection.getAdmin();
+- 判断表是否存在:admin.tableExists(TableName.valueOf(tableName));
+
+    ```java
+    public class TestHbase {
+      private static Admin admin = null;
+      private static Connection connection = null;
+      private static Configuration conf = null;
+      static {
+        // HBase配置文件
+        conf = HBaseConfiguration.create();
+        conf.set("hbase.zookeeper.quorum", "192.168.1.103");
+        // 获取连接对象
+        try {
+          connection = ConnectionFactory.createConnection(conf);
+          // 获取HBase管理员对象
+          admin = connection.getAdmin();
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+
+      private static void close(Connection conn, Admin admin) throws IOException {
+        if (conn != null) {
+          conn.close();
+        }
+        if (admin != null) {
+          admin.close();
+        }
+      }
+
+      // 判断表是否存在
+      public static boolean tableExist(String tableName) throws IOException {
+        boolean tableExists = admin.tableExists(TableName.valueOf(tableName));
+        return tableExists;
+      }
+
+      // 创建表
+      public static void createTable(String tableName, String... cfs) throws IOException {
+        if (tableExist(tableName)) {
+          System.out.println("表已存在");
+          return;
+        }
+        // cfs是列族，官方建议一个表一个，但可以有多个
+        // 创建表描述器
+        HTableDescriptor hTableDescriptor = new HTableDescriptor(TableName.valueOf(tableName));
+        for (String cf : cfs) {
+          // 创建列描述器
+          HColumnDescriptor hColumnDescriptor = new HColumnDescriptor(cf);
+    //			hColumnDescriptor.setMaxVersions(3);//设置版本数
+          hTableDescriptor.addFamily(hColumnDescriptor);
+        }
+        // 创建表操作
+        admin.createTable(hTableDescriptor);
+      }
+
+      // 删除表
+      public static void deleteTable(String tableName) throws IOException {
+        if (!tableExist(tableName)) {
+          System.out.println("表不存在");
+          return;
+        }
+        // 使表不可用（下线）
+        admin.disableTable(TableName.valueOf(tableName));
+        // 执行删除操作
+        admin.deleteTable(TableName.valueOf(tableName));
+        System.out.println("表已删除");
+      }
+
+      // 增、改
+      public static void putData(String tableName, String rowKey, String cf, String cn, String value) throws IOException {
+        // 获取表对象
+    //		HTable table=new HTable(conf,TableName.valueOf(tableName)); 已过时
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        // 创建put对象
+        Put put = new Put(Bytes.toBytes(rowKey));
+        // 添加数据
+        put.addColumn(Bytes.toBytes(cf), Bytes.toBytes(cn), Bytes.toBytes(value));
+        // 执行添加操作
+        table.put(put);
+      }
+
+      // 删
+      public static void delete(String tableName, String rowKey, String cf, String cn) throws IOException {
+        // 获取table对象
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        // 创建delete对象
+        Delete delete = new Delete(Bytes.toBytes(rowKey));// 删除整个列族
+        delete.addColumns(Bytes.toBytes(cf), Bytes.toBytes(cn));// 删除所有版本
+    //		delete.addColumn(Bytes.toBytes(cf), Bytes.toBytes(cn));不推荐，只删除最新的版本
+        // 执行删除操作
+        table.delete(delete);
+        table.close();
+      }
+
+      // 查——全表扫描，只能获取最新版本
+      public static void scanTable(String tableName) throws IOException {
+        // 获取table对象
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        // 构建扫描器
+        Scan scan = new Scan();
+        ResultScanner resultScanner = table.getScanner(scan);
+
+        // 遍历数据并打印
+        for (Result result : resultScanner) { // rowkey
+          Cell[] cells = result.rawCells();
+          for (Cell cell : cells) { // cell
+            System.out.println("RK:" + Bytes.toString(CellUtil.cloneRow(cell)) + ",CF:"
+                + Bytes.toString(CellUtil.cloneFamily(cell)) + ",CN:"
+                + Bytes.toString(CellUtil.cloneQualifier(cell)) + ",VALUE:"
+                + Bytes.toString(CellUtil.cloneValue(cell)));
+          }
+        }
+        table.close();
+      }
+
+      // 查——获取指定列族
+      public static void getData(String tableName, String rowKey, String cf, String cn) throws IOException {
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        Get get = new Get(Bytes.toBytes(rowKey));
+        get.addColumn(Bytes.toBytes(cf), Bytes.toBytes(cn));
+    //		get.addFamily(cf);
+    //		get.setMaxVersions();//不传参默认是表结构内的maxversions
+        get.setMaxVersions(2);
+        Result result = table.get(get);
+        Cell[] cells = result.rawCells();
+        for (Cell cell : cells) { // cell
+          System.out.println("RK:" + Bytes.toString(CellUtil.cloneRow(cell)) + ",CF:"
+              + Bytes.toString(CellUtil.cloneFamily(cell)) + ",CN:"
+              + Bytes.toString(CellUtil.cloneQualifier(cell)) + ",VALUE:"
+              + Bytes.toString(CellUtil.cloneValue(cell)));
+        }
+      }
+    ```
+
+## 4.7. Hbase 表的设计
+
+三个表设计：
+
+> ![](./image/hbase_table_design.png)
+
+
+## Hbase构建sql引擎
+
+1.Hive整合HBase
+
+2.Phoenix
+
+
+## Hbase二级索引
+
+- Hindex二级索引
+  - 华为公司开发的纯 Java 编写的HBase二级 索引，
+
+- HBase+Redis
+  > ![hbase-redis](./image/hbase-redis.png) 
+
+- HBase+solr
+  > ![hbase-solr](./image/hbase-solr.png) 
+
+- 采用HBase0.92版本之后引入的Coprocessor特性。Coprocessor构建二级索引。两种方式
+  - endpoint相当于关系型数 据库的存储过程
+  - observer则相当于触发器
+
+

@@ -18,13 +18,13 @@
 
     比如task同样是做猫狗识别，但输入的是卡通类型的图像
 
-<center><img src="./img/no-related.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/no-related.png" width="60%"/></center>
 
 ##### compare with real life
 
 事实上，我们在日常生活中经常会使用迁移学习，比如我们会把漫画家的生活自动迁移类比到研究生的生活
 
-<center><img src="./img/tf-real.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tf-real.png" width="60%"/></center>
 
 ##### overview
 
@@ -35,7 +35,7 @@
 
 按照labeled data和unlabeled data又可以划分为四种：
 
-<center><img src="./img/tl-overview.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tl-overview.png" width="60%"/></center>
 
 ### Case 1
 
@@ -61,7 +61,7 @@
 
 如果现在有大量的source data，比如在语音识别中有大量不同人的声音数据，可以拿它去训练一个语音识别的神经网络，而现在你拥有的target data，即特定某个人的语音数据，可能只有十几条左右，如果直接拿这些数据去再训练，肯定得不到好的结果
 
-<center><img src="./img/tf-ct.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tf-ct.png" width="60%"/></center>
 
 此时我们就需要在训练的时候加一些限制，让用target data训练前后的model不要相差太多：
 
@@ -77,7 +77,7 @@
 
 这样做的好处是target data只需要考虑model中非常少的参数，这样就可以避免过拟合
 
-<center><img src="./img/tl-lt.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tl-lt.png" width="60%"/></center>
 
 这个对部分layer进行迁移的过程，就体现了迁移学习的思想，接下来要面对的问题是，哪些layer需要被复制迁移，哪些不需要呢？
 
@@ -93,7 +93,7 @@
 
 - 主要还是具体问题具体分析
 
-<center><img src="./img/tl-lt2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/tl-lt2.png" width="60%"/></center>
 
 #### Multitask Learning
 
@@ -105,7 +105,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 有时候task A和task B的输入输出都不相同，但中间可能会做一些类似的处理，则可以让两个神经网络共享中间的几层layer，也可以达到类似的效果
 
-<center><img src="./img/multi-task.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/multi-task.png" width="60%"/></center>
 
 注意，以上方法要求不同的task之间要有一定的共性，这样才有共用一部分layer的可能性
 
@@ -115,13 +115,13 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 在机器翻译上也可以使用同样的思想，比如训练一个同时可以中翻英和中翻日的model
 
-<center><img src="./img/multi-task-speech.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/multi-task-speech.png" width="60%"/></center>
 
 注意到，属于同一个语系的语言翻译，比如欧洲国家的语言，几乎都是可以做迁移学习的；而语音方面则可迁移的范围更广
 
 下图展示了只用普通话的语音数据和加了欧洲话的语音数据之后得到的错误率对比，其中横轴为使用的普通话数据量，纵轴为错误率，可以看出使用了迁移学习后，只需要原先一半的普通话语音数据就可以得到几乎一样的准确率
 
-<center><img src="./img/multi-task-speech2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/multi-task-speech2.png" width="60%"/></center>
 
 #### Progressive Neural Network
 
@@ -134,7 +134,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 - task 3也做一样的事情，同时从task 1和task 2的hidden layer中得到信息
 
-<center><img src="./img/multi-task-pro.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/multi-task-pro.png" width="60%"/></center>
 
 ### Case 2
 
@@ -150,13 +150,13 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 比如source data是labeled MNIST数字集，而target data则是加了颜色和背景的unlabeled数字集，虽然都是做数字识别，但两者的情况是非常不匹配的
 
-<center><img src="./img/domain-adversarial.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/domain-adversarial.png" width="60%"/></center>
 
 这个时候一般会把source data当做训练集，而target data当做测试集，如果不管训练集和测试集之间的差异，直接训练一个普通的model，得到的结果准确率会相当低
 
 实际上，神经网络的前几层可以被看作是在抽取feature，后几层则是在做classification，如果把用MNIST训练好的model所提取出的feature做t-SNSE降维后的可视化，可以发现MNIST的数据特征明显分为紫色的十团，分别代表10个数字，而作为测试集的数据却是挤成一团的红色点，因此它们的特征提取方式根本不匹配
 
-<center><img src="./img/domain-adversarial2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/domain-adversarial2.png" width="60%"/></center>
 
 所以我们希望前面的特征提取器(feature extractor)可以把domain的特性去除掉，不再使红点与蓝点分成两群，而是让它们都混在一起
 
@@ -164,7 +164,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 只不过在这里，feature extractor可以通过把feature全部设为0，很轻易地骗过domain classifier，因此还需要给feature classifier增加任务的难度，它不只要骗过domain classifier，还要同时满足label predictor的需求
 
-<center><img src="./img/domain-adversarial3.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/domain-adversarial3.png" width="60%"/></center>
 
 此时通过特征提取器得到的feature不仅可以消除不同domain的特性，还要保留原先digit的特性，既可以区分不同类别的数字集，又可以正确地识别出不同的数字
 
@@ -176,7 +176,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 这里可以看出，Feature extractor和Domain classifier的目标是相反的，要做到这一点，只需要在两者之间加一层梯度反转的layer即可，当NN做backward的时候，两者的参数更新往相反的方向走
 
-<center><img src="./img/domain-adversarial4.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/domain-adversarial4.png" width="60%"/></center>
 
 注意到，Domain classifier只能接受到Feature extractor给到的特征信息，而无法直接看到图像的样子，因此它最后一定会鉴别失败，所以如何提高Domain classifier的能力，让它经过一番奋力挣扎之后才牺牲是很重要的，如果它一直很弱，就无法把Feature extractor的潜能激发到极限
 
@@ -186,7 +186,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 在语音识别中，经常会遇到这个问题，毕竟词汇千千万万，总有一些词汇是训练时不曾遇到过的，它的处理方法是不要直接将识别的目标定成word，而是定成phoneme(音素)，再建立文字与phoneme之间的映射表即可
 
-<center><img src="./img/zero-shot.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/zero-shot.png" width="60%"/></center>
 
 在图像处理中，我们可以把每个类别都用其属性表示，并且要具备独一无二的属性，在数据集中把每种动物按照特性划分，比如是否毛茸茸、有几只脚等，在训练的时候我们不直接去判断类别，而是去判断该图像的属性，再根据这些属性去找到最契合的类别即可
 
@@ -194,7 +194,7 @@ fine-tune仅考虑在target data上的表现，而多任务学习，则是同时
 
 当遇到新的图像时，只需要将其投影到相同的空间，即可判断它与哪个属性对应的类别更接近
 
-<center><img src="./img/zero-shot2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/zero-shot2.png" width="60%"/></center>
 
 但如果我们根本就无法找出每个动物的属性$y^i$是什么，那该怎么办？可以使用word vector，比如直接从维基百科上爬取图像对应的文字描述，再用word vector降维提取特征，映射到同样的空间即可
 

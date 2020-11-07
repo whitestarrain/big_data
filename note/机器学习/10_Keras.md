@@ -10,7 +10,7 @@
 
 而且，现在Keras已经成为了Tensorflow官方的API，它像搭积木一样简单
 
-<center><img src="./img/keras.png" width="50%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras.png" width="50%;" /></center>
 接下来我们用手写数字识别的demo来介绍一下"Hello world" of deep learning
 
 #### prepare data
@@ -63,7 +63,7 @@ model = Sequential()
     model.add(Dense(units=10, activation='softmax'))
     ~~~
 
-<center><img src="./img/keras-step1.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras-step1.png" width="60%;" /></center>
 注：上图中写的是Keras1.0的语法，在笔记中给出的则是Keras2.0的语法，应当使用后者
 
 ##### Step 2：goodness of function——cross entropy
@@ -78,7 +78,7 @@ model.compile(loss='categorical_crossentropy',
               metrics=['accuracy'])
 ~~~
 
-<center><img src="./img/keras-step2.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras-step2.png" width="60%;" /></center>
 ##### Step 3：pick the best function
 
 ###### Configuration
@@ -119,7 +119,7 @@ model.compile(loss='categorical crossentropy',
 
 注：如果batch_size设为1，就是**Stochastic Gradient Descent**(随机梯度下降法)，这个我们之前在讨论gradient descent的时候有提到，就是每次拿到一个样本点就update一次参数，而不是每次拿到一批样本点的error之后才去update参数，因此stochastic gradient descent的好处是它的速度比较快，虽然每次update参数的方向是不稳定的，但是**天下武功，唯快不破**，在别人出一拳的时候，它就已经出了100拳了，所以它是比较强的
 
-<center><img src="./img/keras-step3.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras-step3.png" width="60%;" /></center>
 #### Mini-batch
 
 这里有一个秘密，就是我们在做deep learning的gradient descent的时候，并不会真的去minimize total loss，那我们做的是什么呢？我们会把Training data分成一个一个的batch，比如说你的Training data一共有1w张image，每次random选100张image作为一个batch(我的理解是，先将原来的image分布随机打乱，然后再按顺序每次挑出batch_size张image组成一个batch，这样才能保证所有的data都有被用到，且不同的batch里不会出现重复的data)
@@ -138,7 +138,7 @@ model.compile(loss='categorical crossentropy',
 
 整个训练的过程类似于stochastic gradient descent，不是将所有数据读完才开始做gradient descent的，而是拿到一部分数据就做一次gradient descent
 
-<center><img src="./img/mini-batch.png" width="50%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mini-batch.png" width="50%;" /></center>
 #### Batch size and Training Speed
 
 ##### batch size太小会导致不稳定，速度上也没有优势
@@ -159,7 +159,7 @@ model.compile(loss='categorical crossentropy',
 
 如果不同batch size的情况，update参数的次数几乎是一样的，你其实会想要选batch size更大的情况，就像在本例中，相较于batch size=1，你会更倾向于选batch size=10，因为batch size=10的时候，是会比较稳定的，因为**由更大的数据集计算的梯度能够更好的代表样本总体，从而更准确的朝向极值所在的方向**
 
-<center><img src="./img/batch-size-speed.png" width="50%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/batch-size-speed.png" width="50%;" /></center>
 我们之前把gradient descent换成stochastic gradient descent，是因为后者速度比较快，update次数比较多，可是现在如果你用stochastic gradient descent并没有见得有多快，那你为什么不选一个update次数差不多，又比较稳定的方法呢？
 
 ##### batch size会受到GPU平行加速的限制，太大可能导致在train的时候卡住
@@ -182,18 +182,18 @@ model.compile(loss='categorical crossentropy',
 
     下面是我手画的图例和注释：
 
-    <center><img src="./img/batch-size.jpg" width="70%;" /></center>
+    <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/batch-size.jpg" width="70%;" /></center>
 
 ##### 不同batch size在梯度下降上的表现
 
 如下图，左边是full batch(拿全部的Training data做一个batch)的梯度下降效果，可以看到每一次迭代成本函数都呈现下降趋势，这是好的现象，说明我们w和b的设定一直再减少误差， 这样一直迭代下去我们就可以找到最优解；右边是mini batch的梯度下降效果，可以看到它是上下波动的，成本函数的值有时高有时低，但总体还是呈现下降的趋势， 这个也是正常的，因为我们每一次梯度下降都是在min batch上跑的而不是在整个数据集上， 数据的差异可能会导致这样的波动(可能某段数据效果特别好，某段数据效果不好)，但没关系，因为它整体是呈下降趋势的
 
-<center><img src="./img/keras-gd1.png" width="50%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras-gd1.png" width="50%;" /></center>
 把下面的图看做是梯度下降空间：蓝色部分是full batch而紫色部分是mini batch，就像上面所说的mini batch不是每次迭代损失函数都会减少，所以看上去好像走了很多弯路，不过整体还是朝着最优解迭代的，而且由于mini batch一个epoch就走了5000步(5000次梯度下降)，而full batch一个epoch只有一步，所以虽然mini batch走了弯路但还是会快很多
 
 而且，就像之前提到的那样，mini batch在update的过程中，步伐具有随机性，因此紫色的路径可以在一定程度上绕过或跳出saddle point、local minima这些gradient趋近于0的地方；而蓝色的路径因为缺乏随机性，只能按照既定的方式朝着目标前进，很有可能就在中途被卡住，永远也跳不出来了
 
-<center><img src="./img/keras-gd2.png" width="40%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/keras-gd2.png" width="40%;" /></center>
 当然，就像之前讨论的一样，如果batch size太小，会造成速度不仅没有加快反而会导致下降的曲线更加不稳定的情况产生
 
 ==**因此batch size既不能太大，因为它会受到硬件GPU平行加速的限制，导致update次数过于缓慢，并且由于缺少随机性而很容易在梯度下降的过程中卡在saddle point或是local minima的地方(极端情况是Full batch)；而且batch size也不能太小，因为它会导致速度优势不明显的情况下，梯度下降曲线过于不稳定，算法可能永远也不会收敛(极端情况是Stochastic gradient descent)**==
@@ -208,7 +208,7 @@ model.compile(loss='categorical crossentropy',
 
 这两件事在理论上运算量是一样多的，但是在实际操作上，对GPU来说，在矩阵里面相乘的每一个element都是可以平行运算的，所以图中stochastic gradient descent运算的时间反而会变成下面mini batch使用GPU运算速度的两倍，这就是为什么我们要使用mini batch的原因
 
-<center><img src="./img/matrix-speed.png" width="50%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/matrix-speed.png" width="50%;" /></center>
 所以，如果你买了GPU，但是没有使用mini batch的话，其实就不会有多少加速的效果
 
 #### Save and Load Models
@@ -231,7 +231,7 @@ Keras是可以帮你save和load model的，你可以把train好的model存起来
     result = model.predict(x_test)
     ~~~
 
-<center><img src="./img/save-load-model.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/save-load-model.png" width="60%;" /></center>
 #### Appendix：手写数字识别完整代码(Keras2.0)
 
 ##### code

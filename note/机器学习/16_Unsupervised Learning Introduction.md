@@ -14,7 +14,7 @@
 - **化繁为简**就是把复杂的input变成比较简单的output，比如把一大堆没有打上label的树图片转变为一棵抽象的树，此时training data只有input $x$，而没有output $\hat y$
 - **无中生有**就是随机给function一个数字，它就会生成不同的图像，此时training data没有input $x$，而只有output $\hat y$
 
-<center><img src="./img/unsupervised.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/unsupervised.png" width="60%"/></center>
 
 #### Clustering
 
@@ -24,7 +24,7 @@
 
 一个很critical的问题：我们到底要分几个cluster？
 
-<center><img src="./img/clustering.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/clustering.png" width="60%"/></center>
 
 ##### K-means
 
@@ -58,7 +58,7 @@ HAC，全称Hierarchical Agglomerative Clustering，层次聚类
 
     下图中，不同颜色的横线和叶结点上不同颜色的方框对应着切法与cluster的分法
 
-    <center><img src="./img/HAC.png" width="60%"/></center>
+    <center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/HAC.png" width="60%"/></center>
 
 HAC和K-means最大的区别在于如何决定cluster的数量，在K-means里，K的值是要你直接决定的；而在HAC里，你并不需要直接决定分多少cluster，而是去决定这一刀切在树的哪里
 
@@ -74,7 +74,7 @@ clustering的缺点是**以偏概全**，它强迫每个object都要属于某个
 
 下图为动漫“全职猎人”中小杰的念能力分布，从表中可以看出我们不能仅仅把他归为强化系
 
-<center><img src="./img/DR.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/DR.png" width="60%"/></center>
 
 ##### Why Dimension Reduction Help?
 
@@ -82,7 +82,7 @@ clustering的缺点是**以偏概全**，它强迫每个object都要属于某个
 
 假设data为下图左侧中的3D螺旋式分布，你会发现用3D的空间来描述这些data其实是很浪费的，因为我们完全可以把这个卷摊平，此时只需要用2D的空间就可以描述这个3D的信息
 
-<center><img src="./img/DR2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/DR2.png" width="60%"/></center>
 
 如果以MNIST(手写数字集)为例，每一张image都是28\*28的dimension，但我们反过来想，大多数28\*28 dimension的vector转成image，看起来都不会像是一个数字，所以描述数字所需要的dimension可能远比28\*28要来得少
 
@@ -90,7 +90,7 @@ clustering的缺点是**以偏概全**，它强迫每个object都要属于某个
 
 你只要抓住角度的变化就可以知道28维空间中的变化，这里的28维pixel就是之前提到的樊一翁的胡子，而1维的角度则是他的头，也就是去芜存菁，化繁为简的思想
 
-<center><img src="./img/DR3.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/DR3.png" width="60%"/></center>
 
 ##### How to do Dimension Reduction？
 
@@ -98,7 +98,7 @@ clustering的缺点是**以偏概全**，它强迫每个object都要属于某个
 
 最简单的方法是**Feature Selection**，即直接从原有的dimension里拿掉一些直观上就对结果没有影响的dimension，就做到了降维，比如下图中从$x_1,x_2$两个维度中直接拿掉$x_1$；但这个方法不总是有用，因为很多情况下任何一个dimension其实都不能被拿掉，就像下图中的螺旋卷
 
-<center><img src="./img/DR4.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/DR4.png" width="60%"/></center>
 
 另一个常见的方法叫做**PCA**(Principe Component Analysis)
 

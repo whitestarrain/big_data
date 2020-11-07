@@ -8,7 +8,7 @@
 
 还是以宝可梦为例，已知宝可梦有18种属性，现在要解决的分类问题就是做一个宝可梦种类的分类器，我们要找一个function，这个function的input是某一只宝可梦，它的output就是这只宝可梦属于这18类别中的哪一个type
 
-<center><img src="./img/pokemon-types.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pokemon-types.png" width="60%;" /></center>
 
 
 ##### 输入数值化
@@ -23,7 +23,7 @@
 
 以皮卡丘为例，我们可以用以上七种特性的数值所组成的vector来描述它
 
-<center><img src="./img/pokemon-features.png" width="60%;"></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pokemon-features.png" width="60%;"></center>
 
 
 #### How to classification
@@ -54,7 +54,7 @@ Regression的output是连续性质的数值，而classification要求的output�
 
 注：该图为三维图像在二维图像上的投影，颜色表示y的大小
 
-<center><img src="./img/classification-regression.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/classification-regression.png" width="60%;" /></center>
 
 
 而且值得注意的是，如果是多元分类问题，把class 1的target当做是1，class 2的target当做是2，class 3的target当做是3的做法是错误的，因为当你这样做的时候，就会被Regression认为class 1和class 2的关系是比较接近的，class 2和class 3的关系是比较接近的，而class 1和class 3的关系是比较疏远的；但是当这些class之间并没有什么特殊的关系的时候，这样的标签用Regression是没有办法得到好的结果的(one-hot编码也许是一种解决方案？)
@@ -69,7 +69,7 @@ Regression的output是连续性质的数值，而classification要求的output�
 
 我们要找的function f(x)里面会有另外一个function g(x)，当我们的input x输入后，如果g(x)>0，那f(x)的输出就是class 1，如果g(x)<0，那f(x)的输出就是class 2，这个方法保证了function的output都是离散的表示class的数值
 
-<center><img src="./img/ideal-alternatives.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/ideal-alternatives.png" width="60%;" /></center>
 
 
 那之前不是说输出是1,2,3...是不行的吗，注意，那是针对Regression的loss function而言的，因为Regression的loss function是用output与“真值”的平方和作为评判标准的，这样输出值(3,2)与(3,1)之间显然是(3,2)关系更密切一些，为了解决这个问题，我们只需要重新定义一个loss function即可
@@ -116,7 +116,7 @@ C--> |"P(x|C2)"| D(x)
 - x属于Class 1的概率为第一条路径除以两条路径和：$P(C_1|x)=\frac{P(C_1)P(x|C_1)}{P(C_1)P(x|C_1)+P(C_2)P(x|C_2)}$
 - x属于Class 2的概率为第二条路径除以两条路径和：$P(C_2|x)=\frac{P(C_2)P(x|C_2)}{P(C_1)P(x|C_1)+P(C_2)P(x|C_2)}$
 
-<center><img src="./img/two-class.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/two-class.png" width="60%;" /></center>
 
 
 这一整套想法叫做**Generative model**(生成模型)，为什么叫它Generative model呢？因为有这个model的话，就可以拿它来generate生成x(如果你可以计算出每一个x出现的概率，就可以用这个distribution分布来生成x、sample x出来)
@@ -135,7 +135,7 @@ $P(C_1)$和$P(C_2)$这两个概率，被称为Prior，计算这两个值还是�
 
 怎么得到$P(x|C_1)$和$P(x|C_2)$的值呢？假设我们的x是一只新来的海龟，它显然是水系的，但是在我们79只水系的宝可梦training data里面根本就没有海龟，所以挑一只海龟出来的可能性根本就是0啊！所以该怎么办呢？
 
-<center><img src="./img/turtle.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/turtle.png" width="60%;" /></center>
 
 
 其实每一只宝可梦都是用一组特征值组成的向量来表示的，在这个vector里一共有七种不同的feature，为了方便可视化，这里先只考虑Defense和SP Defence这两种feature
@@ -144,7 +144,7 @@ $P(C_1)$和$P(C_2)$这两个概率，被称为Prior，计算这两个值还是�
 
 你可以想象说这已有的79只水系宝可梦的data其实只是冰山一角，假定水系神奇宝贝的Defense和SP Defense是从一个Gaussian的distribution里面sample出来的，下图只是采样了79个点之后得到的分布，但是从高斯分布里采样出海龟这个点的几率并不是0，那从这79个已有的点，怎么找到那个Gaussian distribution函数呢？
 
-<center><img src="./img/feature.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/feature.png" width="60%;" /></center>
 
 
 ##### Gaussian Distribution
@@ -155,19 +155,19 @@ f_{u,\Sigma}(x)=\frac{1}{(2\pi)^{\frac{D}{2}}}\frac{1}{|\Sigma|^{\frac{1}{2}}}e^
 $$
 从下图中可以看出，同样的$\Sigma$，不同的$u$，概率分布最高点的地方是不一样的
 
-<center><img src="./img/gaussian-distribution.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gaussian-distribution.png" width="60%;" /></center>
 
 
 同理，如果是同样的$u$，不同的$\Sigma$，概率分布最高点的地方是一样的，但是分布的密集程度是不一样的
 
-<center><img src="./img/gaussian-same-u.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gaussian-same-u.png" width="60%;" /></center>
 
 
 那接下来的问题就是怎么去找出这个Gaussian，**只需要去估测出这个Gaussian的均值$u$和协方差$\Sigma$即可**
 
 估测$u$和$\Sigma$的方法就是极大似然估计法(Maximum Likelihood)，极大似然估计的思想是，==找出最特殊的那对$u$和$\Sigma$，从它们共同决定的高斯函数中再次采样出79个点，使”得到的分布情况与当前已知79点的分布情况相同“这件事情发生的可能性最大==
 
-<center><img src="./img/maximum-likelihood.png" width="60%;"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/maximum-likelihood.png" width="60%;"/></center>
 
 
 实际上任意一组$u$和$\Sigma$对应的高斯函数($u$表示该Gaussian的中心点，$\Sigma$表示该Gaussian的分散程度)都有可能sample出跟当前分布一致的样本点，就像上图中的两个红色圆圈所代表的高斯函数，但肯定存在着发生概率最大的哪一个Gaussian，而这个函数就是我们要找的
@@ -195,12 +195,12 @@ u=
 \end{bmatrix}
 $$
 
-<center><img src="./img/gaussian.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/gaussian.png" width="60%;" /></center>
 
 
 同理，我们用极大似然估计法在高斯函数上的公式计算出class 2的两个参数，得到的最终结果如下：
 
-<center><img src="./img/maximum-2case.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/maximum-2case.png" width="60%;" /></center>
 
 
 有了这些以后，我们可以得到$P(C_1),P(x|C_1),P(C_2),P(x|C_2)$这四个值，就可以开始做分类的问题了
@@ -211,7 +211,7 @@ $$
 
 现在我们已经有了以下数据和具体分布：
 
-<center><img src="./img/do-classification.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/do-classification.png" width="60%;" /></center>
 
 
 只要带入某一个input x，就可以通过这个式子计算出它是否是class 1了！
@@ -226,7 +226,7 @@ $$
 
 再把testing data上得到的结果可视化出来，即右下角的图，发现分的不是太好，正确率才是47%
 
-<center><img src="./img/classification-result.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/classification-result.png" width="60%;" /></center>
 
 
 我们之前用的只是Defense和SP Defense这两个参数，在二维空间上得到的效果不太好，但实际上一开始就提到了宝可梦总共是有6个features的，也许在二维空间上它们是重叠在一起的，但是在六维空间上看它们也许会分得很好，每一个宝可梦都是六维空间中的一个点，于是我们的$u$是一个6-dim的vector，$\Sigma$则是一个6\*6的matrix，发现得到的准确率也才64%，这个分类器表现得很糟糕，是否有办法将它改进的更好？
@@ -237,14 +237,14 @@ $$
 
 其实variance是跟input的feature size的平方成正比的，所以当feature的数量很大的时候，$\Sigma$大小的增长是可以非常快的，在这种情况下，给不同的Gaussian以不同的covariance matrix，会造成model的参数太多，而参数多会导致该model的variance过大，出现overfitting的现象，因此对不同的class使用同一个covariance matrix，可以有效减少参数
 
-<center><img src="./img/modify-model.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/modify-model.png" width="60%;" /></center>
 
 
 此时就把$u_1$、$u_2$和共同的$\Sigma$一起去合成一个极大似然函数，此时可以发现，得到的$u_1$和$u_2$和原来一样，还是各自的均值，而$\Sigma$则是原先两个$\Sigma_1$和$\Sigma_2$的加权
 
 再来看一下结果，你会发现，class 1和class 2在没有共用covariance matrix之前，它们的分界线是一条曲线；如果共用covariance matrix的话，它们之间的分界线就会变成一条直线，这样的model，我们也称之为linear model(尽管Gaussian不是linear的，但是它分两个class的boundary是linear)
 
-<center><img src="./img/modify-compare.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/modify-compare.png" width="60%;" /></center>
 
 
 如果我们考虑所有的feature，并共用covariance的话，原来的54%的正确率就会变成73%，显然是有分对东西的，但是为什么会做到这样子，我们是很难分析的，因为这是在高维空间中发生的事情，我们很难知道boundary到底是怎么切的，但这就是machine learning它fancy的地方，人没有办法知道怎么做，但是machine可以帮我们做出来
@@ -271,7 +271,7 @@ $$
     $$
     这里上标i表示第i个点，这里x是一个features的vector，用下标来表示这个vector中的某个feature
 
-<center><img src="./img/three-steps.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/three-steps.png" width="60%;" /></center>
 
 
 #### Probability distribution
@@ -284,7 +284,7 @@ $$
 
 我们可以考虑这样一件事情，假设$x=[x_1 \ x_2 \ x_3 \ ... \ x_k \ ... \ ]$中每一个dimension $x_k$的分布都是相互独立的，它们之间的covariance都是0，那我们就可以把x产生的几率拆解成$x_1,x_2,...,x_k$产生的几率之积
 
-<center><img src="./img/distribution.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/distribution.png" width="60%;" /></center>
 
 
 这里每一个dimension的分布函数都是一维的Gaussian distribution，如果这样假设的话，等于是说，原来那多维度的Gaussian，它的covariance matrix变成是diagonal(对角的)，在不是对角线的地方，值都是0，这样就可以更加减少需要的参数量，就可以得到一个更简单的model
@@ -303,21 +303,21 @@ $$
 
 表达式上下同除以分子，得到$\sigma(z)=\frac{1}{1+e^{-z}}$，这个function叫做sigmoid function([S函数](https://zh.wikipedia.org/wiki/S%E5%87%BD%E6%95%B0))
 
-<center><img src="./img/posterior-probability.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/posterior-probability.png" width="60%;" /></center>
 
 
 这个S函数是已知逻辑函数，现在我们来推导一下z**真正的样子**，推导过程如下：
 
-<center><img src="./img/z1.png" width="60%;" /></center><br>
-<center><img src="./img/z2.png" width="60%;" /></center><br>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/z1.png" width="60%;" /></center><br>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/z2.png" width="60%;" /></center><br>
 
 
-<center><img src="./img/z3.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/z3.png" width="60%;" /></center>
 
 
 上面的推导过程可能比较复杂，但是得到的最终结果还是比较好的：(当$\Sigma_1$和$\Sigma_2$共用一个$\Sigma$时，经过化简相消z就变成了一个linear的function，x的系数是一个vector w，后面的一大串数字其实就是一个常数项b)
 
-<center><img src="./img/z-final.png" width="60%;" /></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/z-final.png" width="60%;" /></center>
 
 
 ==**$P(C_1|x)=\sigma (w\cdot x+b)$这个式子就解释了，当class 1和class 2共用$\Sigma$的时候，它们之间的boundary会是linear的**==

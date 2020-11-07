@@ -10,13 +10,13 @@
 
 我们可以用vector去描述人和公仔的属性，如果某个人的属性和某个公仔的属性是match的，即他们背后的vector很像(内积值很大)，这个人就会偏向于拥有更多这种类型的公仔
 
-<center><img src="./img/mf.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf.png" width="60%"/></center>
 
 #### matrix expression
 
 但是，我们没有办法直接观察某个人背后这些潜在的属性，也不会有人在意一个肥宅心里想的是什么，我们同样也没有办法直接得到动漫人物背后的属性；我们目前有的，只是动漫人物和人之间的关系，即每个人已购买的公仔数目，我们要通过这个关系去推测出动漫人物与人背后的潜在因素(latent factor)
 
-<center><img src="./img/mf2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf2.png" width="60%"/></center>
 
 我们可以把每个人的属性用vector $r^A$、$r^B$、$r^C$、$r^D$、$r^E$来表示，而动漫人物的属性则用vector $r^1$、$r^2$、$r^3$、$r^4$来表示，购买的公仔数目可以被看成是matrix $X$，对$X$来说，行数为人数，列数为动漫角色的数目
 
@@ -28,7 +28,7 @@
 
 我们要找一组$r^A$\~$r^E$和$r^1$\~$r^4$，使得右侧两个矩阵相乘的结果与左侧的matrix $X$越接近越好，可以使用SVD的方法求解
 
-<center><img src="./img/mf3.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf3.png" width="60%"/></center>
 
 #### prediction
 
@@ -38,7 +38,7 @@ L=\sum\limits_{(i,j)}(r^i\cdot r^j-n_{ij})^2
 $$
 其中$r^i$值的是人背后的latent factor，$r^j$指的是动漫角色背后的latent factor，我们要让这两个vector的内积与实际购买该公仔的数量$n_{ij}$越接近越好，这个方法的关键之处在于，计算上式时，可以跳过missing的数据，最终通过gradient descent求得$r^i$和$r^j$的值
 
-<center><img src="./img/mf4.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf4.png" width="60%"/></center>
 
 假设latent factor的数目等于2，则人的属性$r^i$和动漫角色的属性$r^j$都是2维的vector，这里实际进行计算后，把属性中较大值标注出来，可以发现：
 
@@ -51,7 +51,7 @@ $$
 
 这也是**推荐系统的常用方法**
 
-<center><img src="./img/mf5.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf5.png" width="60%"/></center>
 
 #### more about matrix factorization
 
@@ -75,5 +75,5 @@ $$
 
 这个场景下找出的latent factor可能会是主题(topic)，比如某个词汇或某个文档有多少比例是偏向于财经主题、政治主题...
 
-<center><img src="./img/mf6.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/mf6.png" width="60%"/></center>
 

@@ -12,7 +12,7 @@
 
 比如7就是$x=u^1+u^3+u^5$，我们可以用$\left [\begin{matrix}c_1\ c_2\ c_3...c_k \end{matrix} \right]^T$来表示一张digit image，如果component的数目k远比pixel的数目要小，那这个描述就是比较有效的
 
-<center><img src="./img/bc.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/bc.png" width="60%"/></center>
 
 实际上目前我们并不知道$u^1$~$u^k$具体的值，因此我们要找这样k个vector，使得$x-\bar x$与$\hat x$越接近越好：
 $$
@@ -28,7 +28,7 @@ $$
 
 - 我们将所有的$x^i-\bar x≈c_1^i u^1+c_2^i u^2+...$都用下图中的矩阵相乘来表示，我们的目标是使等号两侧矩阵之间的差距越小越好
 
-<center><img src="./img/re.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/re.png" width="60%"/></center>
 
 - 可以使用SVD将每个matrix $X_{m×n}$都拆成matrix $U_{m×k}$、$\Sigma_{k×k}$、$V_{k×n}$的乘积，其中k为component的数目
 - 值得注意的是，使用SVD拆解后的三个矩阵相乘，是跟等号左边的矩阵$X$最接近的，此时$U$就对应着$u^i$那部分的矩阵，$\Sigma\cdot V$就对应着$c_k^i$那部分的矩阵
@@ -36,7 +36,7 @@ $$
 - 因此我们可以发现，通过PCA找出来的Dimension Reduction的transform，实际上就是把$X$拆解成能够最小化Reconstruction error的component的过程，通过PCA所得到的$w^i$就是component $u^i$，而Dimension Reduction的结果就是参数$c_i$
 - 简单来说就是，用PCA对$x$进行降维的过程中，我们要找的投影方式$w^i$就相当于恰当的组件$u^i$，投影结果$z^i$就相当于这些组件各自所占的比例$c_i$
 
-<center><img src="./img/svd.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/svd.png" width="60%"/></center>
 
 - 下面的式子简单演示了将一个样本点$x$划分为k个组件的过程，其中$\left [\begin{matrix}c_1 \ c_2\ ... c_k \end{matrix} \right ]^T$是每个组件的比例；把$x$划分为k个组件即从n维投影到k维空间，$\left [\begin{matrix}c_1 \ c_2\ ... c_k \end{matrix} \right ]^T$也是投影结果
 
@@ -99,15 +99,15 @@ $$
 
 - 对$x-\bar x$与$w^k$做inner product的过程类似于neural network，$x-\bar x$在3维空间上的坐标就相当于是neuron的input，而$w^1_1$，$w^1_2$，$w^1_3$则是neuron的weight，表示在$w^1$这个维度上投影的参数，而$c_1$则是这个neuron的output，表示在$w^1$这个维度上投影的坐标值；对$w^2$也同理
 
-<center><img src="./img/pca-nn.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-nn.png" width="60%"/></center>
 
 - 得到$c_1$之后，再让它乘上$w^1$，得到$\hat x$的一部分
 
-<center><img src="./img/pca-nn2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-nn2.png" width="60%"/></center>
 
 - 对$c_2$进行同样的操作，乘上$w^2$，贡献$\hat x$的剩余部分，此时我们已经完整计算出$\hat x$三个分量的值
 
-<center><img src="./img/pca-nn3.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-nn3.png" width="60%"/></center>
 
 - 此时，PCA就被表示成了只含一层hidden layer的神经网络，且这个hidden layer是线性的激活函数，训练目标是让这个NN的input $x-\bar x$与output $\hat x$越接近越好，这件事就叫做**Autoencoder**
 
@@ -127,7 +127,7 @@ PCA有很明显的弱点：
 
     对类似曲面空间的降维投影，需要用到non-linear transformation
 
-<center><img src="./img/pca-weak.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-weak.png" width="60%"/></center>
 
 #### PCA for Pokemon
 
@@ -139,7 +139,7 @@ PCA有很明显的弱点：
 
 实际上，宝可梦的$cov(x)$是6维，最多可以投影到6维空间，我们可以先找出6个特征向量和对应的特征值$\lambda_i$，其中$\lambda_i$表示第i个投影维度的variance有多大(即在第i个维度的投影上点的集中程度有多大)，然后我们就可以计算出每个$\lambda_i$的比例，ratio=$\frac{\lambda_i}{\sum\limits_{i=1}^6 \lambda_i}$
 
-<center><img src="./img/pca-poke.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-poke.png" width="60%"/></center>
 
 从上图的ratio可以看出$\lambda_5$、$\lambda_6$所占比例不高，即第5和第6个principle component(可以理解为维度)所发挥的作用是比较小的，用这两个dimension做投影所得到的variance很小，投影在这两个方向上的点比较集中，意味着这两个维度表示的是宝可梦的共性，无法对区分宝可梦的特性做出太大的贡献，所以我们只需要利用前4个principle component即可
 
@@ -158,7 +158,7 @@ PCA有很明显的弱点：
     - 在PC2维度上特别大的那个样本点刚好对应着普普(海龟)，确实是防御力且速度慢的宝可梦
     - 在PC1维度上特别大的那三个样本点则对应着盖欧卡、超梦等综合实力很强的宝可梦
 
-<center><img src="./img/pca-poke2.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-poke2.png" width="60%"/></center>
 
 - 对第三个vector PC3来说，sp Def很大而HP和Atk很小，这个组件是用生命力和攻击力来换取特殊防御力
 
@@ -171,7 +171,7 @@ PCA有很明显的弱点：
     - 在PC3维度上特别大的样本点依旧是普普，第二名是冰柱机器人，它们的特殊防御力都比较高
     - 在PC4维度上特别大的样本点则是吉利蛋和幸福蛋，它们的生命力比较强
 
-<center><img src="./img/pca-poke3.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-poke3.png" width="60%"/></center>
 
 #### PCA for MNIST
 
@@ -183,7 +183,7 @@ $$
 
 注：PCA就是求$Cov(x)=\frac{1}{N}\sum (x-\bar x)(x-\bar x)^T$的前30个最大的特征值对应的特征向量
 
-<center><img src="./img/pca-mnist.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-mnist.png" width="60%"/></center>
 
 #### PCA for Face
 
@@ -191,7 +191,7 @@ $$
 
 用这些脸的组件做线性组合就可以得到所有的脸
 
-<center><img src="./img/pca-face.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/pca-face.png" width="60%"/></center>
 
 #### What happens to PCA
 
@@ -226,13 +226,13 @@ PCA可以看成对原始矩阵$X$做SVD进行矩阵分解，但并不保证分�
 
 在MNIST数据集上，通过NMF找到的前30个组件如下图所示，可以发现这些组件都是由基础的笔画构成：
 
-<center><img src="./img/nmf-mnist.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/nmf-mnist.png" width="60%"/></center>
 
 ##### NMF for Face
 
 在Face数据集上，通过NMF找到的前30个组价如下图所示，相比于PCA这里更像是脸的一部分
 
-<center><img src="./img/nmf-face.png" width="60%"/></center>
+<center><img src="https://gitee.com/Sakura-gh/ML-notes/raw/master/img/nmf-face.png" width="60%"/></center>
 
 #### More Related Approaches
 
