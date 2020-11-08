@@ -1337,7 +1337,7 @@
   - 遍历
   - ......
 
-### 2.4.2. MapReduce 架构
+### 2.4.2. MapReduce 大致架构
 
 ![](./image/mapreduce-1.jpg)
 
@@ -1356,7 +1356,7 @@
 - 阶段三：shuffler(洗牌)
   - 将数据发给 reduce，根据分区不同上传到不同 reduce 上（分区后面讲）
     > 涉及网络数据迁移
-  - 将 key 相同的数据 merge 起来
+  - 将 key 相同的数据 merge(归并) 起来
   - 一个 reduce 可以处理多个 key。一个 key 对应一个 reduce。
     > reduce-key：一对多<br>
     > 注意：一个 key 不能分给多个 reduce。所以需要处理最大数据量 reduce 就会称为执行时间的瓶颈<br>
@@ -1366,6 +1366,8 @@
   - **相同的 key**数据调一次 reduce
 
 ### 2.4.3. 架构细节
+
+![mapreduce-2-1](./image/mapreduce-2-1.png)
 
 ![](./image/mapreduce-2.jpg)
 
@@ -1389,7 +1391,7 @@
       - 对数据进行压缩（conbiner），数据简单处理
         - 比如 reduce 会用到数据的和，在 map 端就可以完成处理，再把数据传递下去
         - 减少 io 数据量交互
-      - 将处理完的数据输出为一个 128MB 的小文件
+      - 将处理完的数据溢写输出为一个 128MB 的小文件
     - 重复操作，直到把所有数据处理完
     - 将所有小文件合并为一个大文件， 降低寻址难度
 - shuffler
@@ -1401,6 +1403,8 @@
     - 后来的后进行归并
     - 但最终不一定都要归并为一个大文件（图中是归并为了一个大文件），这样会造成 io 流的浪费
     - 最终归并为若干个小文件也行，只要保证文件间有序即可
+
+
 
 ### 2.4.4. 示例
 
@@ -1433,6 +1437,7 @@
   - Writable 序列化：使能分布式程序数据交互
   - Comparable 比较器：实现具体排序（字典序，数值序等
 
+
 ### 2.4.6. 运行架构：计算向数据移动
 
 #### 2.4.6.1. 版本 1.x
@@ -1443,6 +1448,8 @@
 
 - client
 
+  - 用户编写的MapReduce程序通过Client提交到JobTracker端
+  - 用户可通过Client提供的一些接口查看作业运行状态
   - 做所需要的规划，比如如何切片，如何分区，如何处理，处理什么。设计作业
   - 做好后打成 jar 包，提交给 hadoop 集群中的 hdfs 的**NameNode**
     > 不给 JobTracker 是因为 JobTracker 单点，不安全。
@@ -1457,10 +1464,26 @@
     > 之所以不由 Job Tracker 来开启 Task 是因为压力太大，所以要分给 Task Tracker<br>
     > 注意：Map 和 Reduce 不再同一节点
   - Task Tracker 再从 NameNode 下载任务 jar 包到 DataNode，读取再对数据进行计算 (**计算向数据移动**)
+  - JobTracker 监控所有TaskTracker与Job的健康状况，一旦发现失败，就 将相应的任务转移到其他节点
 - JobTracker 资源管理：
   - 想要开启 Map-Task 和 Reduce-Task，就要确认节点上是否还有剩余资源（比如进程数，内存等）
+  - 调度器会在资源出现空闲时，选 择合适的任务去使用这些资源
   - Task-Tracker 会时刻监控节点的资源利用情况
   - Job-Tracker 会和 Task_Tracker 保持心跳，Task Tracker 汇报资源状况
+
+- TaskTracker
+  - 汇报
+    - TaskTracker 会周期性地通过 心跳 将本节点上资源的使用情况和任务的运行进度汇报给JobTracker，
+  - 接收
+    - 同时接收JobTracker 发送过来的命令 并执行相应的操作（如启动新任务、杀死任务等）
+  - 资源划分
+    - TaskTracker 使用 slot 等量划分本节点上的资源量（CPU、内存等）。 
+    - 一个Task 获取到一个slot 后才有机会运行，
+    - 而Hadoop调度器的作用就是 将各个TaskTracker上的空闲slot分配给Task使用。
+    - slot 分为Map slot 和 Reduce slot 两种，分别供MapTask 和Reduce Task 使用
+      - 通常设置比reduce任务槽数目稍微小一些的Reduce任务个数（这样可 以预留一些系统资源处理可能发生的错误）
+
+![trackers](./image/trackers.png)
 
 ##### 2.4.6.1.2. 示例流程：
 
@@ -1494,6 +1517,8 @@
   - 资源管理与计算调度强耦合，job traker 属于 hadoop 计算框架，其他计算框架需要重复实现资源管理
     > 比如 storm 也进来了，storm 和 mapreduce 的资源管理不互相联系，可能会出现重复占用，布置失败，就要重新布置
   - 不同框架对资源不能全局管理
+
+
 
 #### 2.4.6.2. 版本 2.x
 
@@ -1819,6 +1844,9 @@ split 读取方式，解决行的分割
 
 ### 2.6.3. reduce 端
 
+
+
+
 - 二次排序：在不改变原本顺序的前提下,重新界定边界
 
   ```
@@ -1838,6 +1866,75 @@ split 读取方式，解决行的分割
   ln.dl
   ----------
   ```
+
+### 2.6.4. 架构整体总结
+
+inputFormat --> inputSplit --> recordReader --> mapper --> outputControler --> (in buffer) partitioner --> (in buffer) sort --> --> [combiner] spiller --> merge and sort --> --> distribution of shuffle --> merge --> sort --> grouping sort --> reduce --> outputFormat --> recordWriter --> write
+
+- InputFormat:定义如何获得分片
+  - 默认TextInputFormat
+- inputSplit:
+  - 获得逻辑分片
+- recordreader:从文件中初步获取k-v格式的record。
+  - 默认LineRecordReader
+  - 每一个record都会调用一次map()
+- mapper:
+  - 对record进行map，获取处理过的k-v
+  - 处理结果不会写入hdfs
+- combiner
+- partitioner:
+  - mapper处理完成后进行分区
+  - 默认使用hash分区器
+- sort
+  - map端根据key进行排序
+- Secondary Sorting(第一个二次排序) 
+  - 也就是map缓存中的第二次排序。
+  - 每个分区内又调用job.setSortComparatorClass()设置的Key比较函数类排序。
+  - 可以看到，这本身就是一个二次排序。
+  - 如果没有通过job.setSortComparatorClass()设置 Key比较函数类，则使用Key实现的compareTo()方法
+- shuffle
+  - map 结束后进行
+- sort
+- Secondary Sorting (第二个二次排序)
+  - 对第一字段相同的行按照第二字段排序，第二次排序不破坏第一次排序的结果，这个过程就称为二次排序。
+  - 通过job.setGroupingComparatorClass()进行设置
+- merge
+- reducer
+- RecordWriter
+- output
+- write to hdfs
+
+![mapreduce-all-thing](./image/mapreduce-all-thing.png)
+
+
+1、①②③④map task读文件，是通过TextInputFormat(--> RecordReader --> read()) 一次读一行，返回(key,value)；
+
+2、⑤上一步获取的(key,value)键值对经过Mapper的map方法逻辑处理形成新的(k,v)键值对，通过context.write输出到OutputCollector收集器；
+
+3、⑥OutputCollector把收集到的(k,v)键值对写入到环形缓冲区中，环形缓冲区默认大小为100M，只写80%(环形缓冲区其实是一个数组，前面写着，后面有个组件清理这，写到文件中，防止溢出)。当环形缓冲区里面的数据达到其大小的80%时，就会触发spill溢出；
+
+4、⑦spill溢出前需要对数据进行分区和排序，即会对环形缓冲区里面的每个(k,v)键值对hash一个partition值，相同partition值为同一分区，然会把环形缓冲区中的数据根据partition值和key值两个关键字升序排序；同一partition内的按照key排序；
+
+5、⑧将环形缓冲区中排序后的内存数据不断spill溢出到本地磁盘文件，如果map阶段处理的数据量较大，可能会溢出多个文件；
+
+6、⑨多个溢出文件会被merge合并成大的溢出文件，合并采用归并排序，所以合并的maptask最终结果文件还是分区且区内有序的；
+
+7、⑩reduce task根据自己的分区号，去各个map task节点上copy拷贝相同partition的数据到reduce task本地磁盘工作目录；
+
+9、⑪reduce task会把同一分区的来自不同map task的结果文件，再进行merge合并成一个大文件(归并排序)，大文件内容按照k有序；
+
+10、⑫⑬合并成大文件后，shuffle的过程也就结束了，后面进入reduce task的逻辑运算过程，首先调用GroupingComparator对大文件里面的数据进行分组，从文件中每次取出一组(k,values)键值对，调用用户自定义的reduce()方法进行逻辑处理；
+
+11、⑭⑮最后通过OutputFormat方法将结果数据写到part-r-000**结果文件中；
+
+注：shuffle中的环形缓冲区大小会影响到MapReduce程序的执行效率，原则上说，缓冲区越大，磁盘IO的次数越少，执行速度就越快。环形缓冲区的大小可以通过在mapred-site.xml中设置mapreduce.task.io.sort.mb的值来改变，默认100M。溢出的时候调用combiner组件，逻辑和reduce的一样，合并，相同的key，value相加，这样传效率高，不用一下子传好多相同的key，在数据量非常大的时候，这样的优化可以节省很多网络带宽和本地磁盘IO流的读写，具体的代码实现：定义一个combiner类，集成Reducer，输入类型和map的输出类型相同。
+
+关于大量小文件的优化策略：
+
+(1) 默认情况下，TextInputFormat对任务的切片机制是按文件规划切片，不管文件多小，都会是一个单独的切片，都会交给一个maptask，这样，如果有大量小文件，就会产生大量的maptask，处理效率极其低下；
+
+(2) 优化策略：最好的方法是，在数据处理系统的最前端(预处理/采集)，就将小文件先合并成大文件，再上传到HDFS做后续分析。补救措施是，如果已经是大量小文件在hdfs中，可以使用另一种InputFormat来做切片(CombineFileInputFormat)，它的切片逻辑与FileInputFormat不同，它可以将多个小文件从逻辑上规划到一个切片中，这样，多个小文件就可以交给一个maptask来处理。
+
 
 ## 2.7. MR 案例
 
@@ -3912,7 +4009,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
       - 命名空间：hbase。
         - meta: 保存元数据
         - namespace
-  - `create`查看报错与帮助
+  - `help 'create'`查看帮助
     ```sql
     -- 没有指定命名空间，默认default
     create 'tbl','cf1','cf2' -- 创建表tbl，包含列族cf1,cf2
@@ -3925,7 +4022,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
           - 数据文件 storefile(现在没有)
         - cf2
           - 数据文件 storefile(现在没有)
-  - `put`查看报错和帮助
+  - `help 'put'`查看帮助
     - `put 'tbl','2','cf1:name','zhangsan'`
       > 一定要添加单引号，否则无法识别
       > 表 tbl 下，rowkey 为 2 的行，列族 cf1，列 name，存放值 zhangsan
@@ -3985,9 +4082,16 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
     - 因为是手动 flush 溢写的，当前文件依旧很小，所以当文件数量到达 3 个时，依旧会合并。直到达到一定的大小，才会停止合并。
 
 - 其他命令测试
-  - `delete` 查看帮助输出
-    - `delete 'tbl','2','cf1:name'`删除数据
+  - `help 'delete'` 查看帮助输出
+    - `delete 'tbl','2','cf1:name'`
+      - 旧版本：删除早于现在时间的version数据。新版中由`delete_all`代替
+      - 新版本：删除最新version的数据
     - `scan 'tbl'`查看数据，只剩下一条
+    - 注意
+      ```
+      Hbase中删除记录并不是真的删除了数据，而是放置了一个 墓碑标记（tombstone marker），因为Hdfs不支持对文件的随机读写。被打上墓碑标记的记录在HFile合并时才会被真正的删除。
+      只要记录未被真正的删除还是可以被查看的。即添加 {RAW=true,VERSIONS=>10} 选项指定查看版本数（这里随便写了个）
+      ```
   - `truncate 'tbl'`删除表中所有数据
     > mysql 复习：truncate 不需要经过事务，delete 需要经过事务
   - `drop 'tbl'`会报错
