@@ -1519,7 +1519,6 @@
   - 不同框架对资源不能全局管理
 
 
-
 #### 2.4.6.2. 版本 2.x
 
 ##### 2.4.6.2.1. 架构
@@ -1709,7 +1708,7 @@
     > 也会关闭 NodeManager
   - 关闭 zookeeper：`zkServer.sh stop`
 
-### 2.5.2. window 端 java 实现作业分发
+### 2.5.2. wordCount示例
 
 > **※重要**
 
@@ -1823,6 +1822,25 @@
 - 打成 jar
 - 执行（要使用全类名）
   > :jar 中指定了文件路径，所以不需要在指令中指定
+
+### 2.5.3. windows端运行
+
+- 会在本地模拟执行
+  - 因此yarn可以关闭
+  - 但是hdfs不能停，会对hdfs进行读写
+
+- 步骤
+  - conf.set("mapreduce.app-submission.cross-platform","true")
+    - 对一些基本参数做一些配置规划
+    - 因为window和linux在环境变量，文件系统等方面都有些区别
+    - 该行是为了做一些兼容。
+    - 不过不写问题也不是太大
+  - conf.set("mapreduce.framework.name","local")
+    - 切换分布式到本地单进程模拟运行
+    - 因为不是分布式，所以不用打jar包
+  - 注释掉 `job.setJarByClass`
+    - 因为并不需要提交作业了
+
 
 ## 2.6. MR 源码分析
 
