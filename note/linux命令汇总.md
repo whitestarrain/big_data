@@ -833,7 +833,7 @@
   - 文件描述符以及对应指向
 
     - /proc 目录保存当前进程的抽象成文件后的文件,其中的数字目录对应进程 id
-    - cd /proc/\$\$ 进入到 bash 进程目录
+    - `cd /proc/$$` 进入到 bash 进程目录
     - 可以看到 bash 进程中的变量，定义
     - fd/是文件描述符文件夹，里面有 0，1，2 三个代表 bash 进程对应的之前提到的三个流。如果有读取文件和网络，会与更多的文件描述符，socket 也在这里.
     - 0,1,2 指向/dev/pts/0
@@ -905,18 +905,14 @@
       - `ls -l ./ &> out.txt`
         > 可以理解为所有输入流&后再重定向（>）
   - 输入：
-
+    >![out-redirect](./image/out-redirect.png) 
     - 修改 read 输入流：
-
       - `read var1 0<<<"afdfafawfwae"` 放文本
-        > 没有堵塞，直接输入后结束
-      - `read var1 0<<aaaaa` 堵塞后输入文本
-
-        > 堵塞，然后输入数据，回车不会作为结束符。输入`aaaaa`后结束堵塞。<br>
-
+        > 没有堵塞，直接输入后结束<br />
+        > 设置变量var1的值
+      - `read var1 0<<aaaaa` 堵塞，然后输入数据，回车不会作为结束符。输入`aaaaa`后结束堵塞。
         - 但因为 read 对换行符敏感，所以只能读取到第一行
         - cat 对换行符不敏感
-
           ```bash
           cat 0<<ooxx
           contentcontentcontentcontentcontentcontentcontentcontent
@@ -924,7 +920,10 @@
           contentcontentcontentcontentcontentcontentcontentcontent
           ooxx
 
-          echo "hello world"
+          echo $var1
+          contentcontentcontentcontentcontentcontentcontentcontent
+          contentcontentcontentcontentcontentcontentcontentcontent
+          contentcontentcontentcontentcontentcontentcontentcontent
           ```
 
       - `cat 0< test2` 直接放文件
@@ -957,26 +956,25 @@
     - 脚本：`bash scriptfile var1 var2 var3`
     - 函数：`method var1 var2 var3`
     - $1,$2,$3,${4}: 位置参数
-      - $11：$1 再拼上 1
-      - \${11} 取第 11 个参数
+      - `$11`：`$1` 再拼上 1
+      - `${11}` 取第 11 个参数
   - 特殊
-    - \$?:最近一次命令执行结果状态
-    - \$#:参数个数
-    - \$\*:参数列表
-    - \$@:参数列表
-    - $$
-      $$
-    - \$BASHPI:当前进程 id
-      > 区别：echo \$\$ | more 会显示当前 bash 的进程 id，因为$$优先级大于管道，会优先替换\$$，再执行管道 <br>
-      > echo $BASHPID | more 会显示管道左侧开启 bash 的进程 id，因为$BASKPID 优先级小于管道，会执行管道，在进行\$BASHPID 的替换<br>
-      > 见下面
+    - `$?`:最近一次命令执行结果状态
+    - `$#`:参数个数
+    - `$*`:参数列表
+    - `$@`:参数列表
+    - `$$`:显示当前进程id
+      - `$BASHPI`:当前进程 id
+        > 区别：`echo $$ | more `会显示当前 bash 的进程 id，因为$$优先级大于管道，会优先替换\$$，再执行管道 <br>
+        > `echo $BASHPID | more` 会显示管道左侧开启 bash 的进程 id，因为$BASKPID 优先级小于管道，会执行管道，在进行\$BASHPID 的替换<br>
+        > 见下面
     - 管道
       - 机制：
         - | 左边启动一个 bash
         - | 右边启动一个 bash
         - 两个 bash 的 io 通过重定向连接
         - 验证 echo \$BASHPID | more
-    - \$?:上一个命令退出状态。0 为成功，非 0 为报错
+    - `$?`:上一个命令退出状态。0 为成功，非 0 为报错
   - 环境变量
     > 环境变量会被子进程继承，其他和本地变量没啥区别
     - 父进程和子进程在一个环境中
@@ -1038,7 +1036,7 @@
 - 命令替换（扩展之一）
   > 将扩展部分的命令执行完后，将结果放在扩展部分
   - `script code`
-  - \$()
+  - `$()`
   - ``\$(< file)``
     ```bash
     lines=`ls -l | wc -l`
@@ -1129,9 +1127,9 @@
 ## 7.8. 练习
 
 - shell 编程一切皆命令
-- 习惯通过 \$? 进行逻辑判断
+- 习惯通过 `$?` 进行逻辑判断
 - 不要逻辑或逻辑与混着用，否则容易混,出现歧义
-- 命令扩展后，会讲结果进行词的拆分。 echo \$IFS 查看。默认是空格和换行符
+- 命令扩展后，会将结果进行词的拆分。 `echo $IFS` 查看。默认是空格和换行符
 
 ```bash
 # 写一个脚本

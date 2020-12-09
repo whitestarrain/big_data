@@ -371,7 +371,7 @@ print(data.dtype)
 
 ## 2.4. Series 和 dataframe 的索引和 mask
 
-![](./img/image_2020-11-03-13-37-04.png)
+![](./image/image_2020-11-03-13-37-04.png)
 
 - 注意：
 
@@ -464,7 +464,7 @@ print(data.dtype)
 
 ### 2.7.2. 列的 multiindex
 
-![multiindex-1](./img/multiindex-1.png)
+![multiindex-1](./image/multiindex-1.png)
 
 ### 2.7.3. 多重索引上的检索和切片
 
@@ -482,7 +482,7 @@ print(data.dtype)
 
 #### 2.7.3.2. DataFrame
 
-![multiindex-2](./img/multiindex-2.png)
+![multiindex-2](./image/multiindex-2.png)
 
 > 索引是列，切片是行
 
@@ -510,9 +510,9 @@ print(data.dtype)
 
 ### 2.7.5. 数据聚合
 
-![img_2020-11-04-16-52-42](./img/image_2020-11-04-16-52-42.png)
+![img_2020-11-04-16-52-42](./image/image_2020-11-04-16-52-42.png)
 
-![img_2020-11-04-16-52-53](./img/image_2020-11-04-16-52-53.png)
+![img_2020-11-04-16-52-53](./image/image_2020-11-04-16-52-53.png)
 
 ## 2.8. 组合数据集
 
@@ -614,7 +614,7 @@ print(data.dtype)
     df.groupby(L).sum()
     ```
   - 使用 map
-    > ![img_2020-11-04-17-33-16](./img/image_2020-11-04-17-33-16.png)
+    > ![img_2020-11-04-17-33-16](./image/image_2020-11-04-17-33-16.png)
     - 主要是会给分组重命名
   - 使用函数：
     - df2.groupby(str.lower).mean()
