@@ -597,6 +597,22 @@
 
 ## 1.10. 部署
 
-
-
+- sbt 配置文件
+  ```
+  -Dsbt.override.build.repos=true  # 设置配置文件覆盖掉预设的配置
+  -Dsbt.coursier.home=D:/learn/sbt/data/coursier # 设置courier目录。idea下载依赖都是下载到这里。不清楚为什么
+  -Dsbt.global.base=D:/learn/sbt/data/.sbt # 设置base目录，会存放一些东西
+  -Dsbt.ivy.home=D:/learn/sbt/data/.ivy2  # 设置ivy2目录，会存放依赖
+  -Dsbt.boot.directory=D:/learn/sbt/data/.sbt/boot # 设置boot目录。不知道存放啥
+  -Dsbt.repository.config=D:/learn/sbt/conf/repo.properties # 设置仓库配置文件夹。可以选择阿里云源
+  -Dsbt.repository.secure=false  # 不清楚
+  -Dsbt.log.format=true  # 
+  -Dfile.encoding=UTF8 # 设置编码
+  -Xmx512M  # 设置 sbt-launcher 执行的堆最大内存
+  -Xss2M
+  -XX:+CMSClassUnloadingEnabled
+  # 设置代理
+  -DsocksProxyHost=127.0.0.1
+  -DsocksProxyPort=10808
+  ```
 
