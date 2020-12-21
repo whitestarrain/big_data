@@ -1,4 +1,4 @@
-# 1. Spark
+# 1. Spark core
 
 ## 1.1. 生态系统
 
@@ -79,7 +79,58 @@
     - 图解：
       > ![spark-4](./image/spark-4.png) 
 
-## 1.3. RDD详解
+
+## 1.3. 基础运行架构
+
+- 架构
+  > ![spark-2](./image/spark-2.png)
+  - SparkContext
+    - 是整个应用程序的指挥官
+    - 代表了应用程序连接集群的通道
+  - Cluster Manager
+    - 种类：
+      - spark自带的(一般不用)
+      - hadoop的yarn
+      - mesos
+    - 资源：
+      - cpu
+      - 内存
+      - 带宽
+  - Worker Node
+    > ![spark-3](./image/spark-3.png) 
+    - 作用:
+      - 驻留Executor 进程
+      - Executor会派生出很多线程，每个线程用来执行一个**任务**
+
+- 运行流程：
+  - 步骤1
+    - 往集群中提交应用程序
+    - 确定driver节点
+    - Driver节点上创建SparkContext对象
+    - SparkContext向资源管理器申请运行Executor的资源
+    - 资源管理器分配资源,在worknode上开启Executor
+    - Executor运行情况将随着“心跳”发送到资源管理器上
+  - 步骤2
+    - SparkContext根据代码中的RDD依赖关系生成DAG
+    - DAG被提交到DAG Scheduler中解析
+    - DAG Scheduler将DAG切成不同的Stage(阶段)
+    - 再把stage提交给Task Scheduler
+  - 步骤3
+    - Worker Node**主动** 向Task Scheduler申请任务运行
+    - Task Scheduler把任务分配下去
+      - **计算向数据靠拢**原则。Task Scheduler会把任务发送给存有相关数据的机器
+  - 步骤4
+    - Executor 派生线程，线程执行具体任务
+    - 运行得到结果返回给Task Scheduler
+    - Task Scheduler将结果返回给DAG Scheduler
+    - DAG Scheduler 将结果返回给 SparkContext
+    - SparkContext返回数据给用户或者写入到HBase中等
+    - 运行完毕后写入数据并释放所有资源。
+  - 图解：
+    > ![spark-7](./image/spark-7.png) 
+
+
+## 1.4. RDD特性详解
 
 - RDD的五大特性：
   > **RDD实际上不存储数据，这里方便理解，暂时理解为存储数据。**
@@ -116,18 +167,21 @@
       - RDD是由Partition组成，partition是分布在不同节点上的。
       - RDD提供计算最佳位置，体现了数据本地化。体现了大数据中“计算移动数据不移动”的理念。
 
-## 1.4. Spark 任务执行原理
+
+## 1.5. Spark 任务执行基本原理
+
+> 具体执行原理见部署一节的不同提交模式的运行原理
 
 ![spark-18](./image/spark-18.png)
 
-- 以上图中有四个机器节点，Driver和Worker是启动在节点上的进程，运行在JVM中的进程。
+- 以上图中有四个机器节点，Driver和Worker是启动在节点上，运行在JVM中的进程。
   - Driver与集群节点之间有频繁的通信。
   - Driver负责任务(tasks)的分发和结果的回收。任务的调度。如果task的计算结果非常大就不要回收了。会造成oom。
   - Worker是Standalone资源调度框架里面资源管理的从节点。也是JVM进程。
   - Master是Standalone资源调度框架里面资源管理的主节点。也是JVM进程。
 
 
-## 1.5. Spark代码流程
+## 1.6. Spark代码基本流程
 
 - 流程
   - 创建SparkConf对象
@@ -155,6 +209,8 @@
       val sc = new SparkContext(conf)
       sc.setLogLevel("Error")
       sc.textFile("./data/words").flatMap( _.split(" ")).map((_,1)).reduceByKey(_+_).foreach(println)
+      // 也可以通过sc.parallelize将集合转换为RDD
+      // 也可以通过sc.makeRDD()将集合转换为RDD
       sc.stop()
 
       // 下面的是演示代码。没有使用链式编程。上面的用了
@@ -241,9 +297,9 @@
   ```
 
 
-## 1.6. 算子
+## 1.7. 算子
 
-### 1.6.1. 某些概念
+### 1.7.1. RDD使用说明
 
 - RDD使用基本原理
   - 把一系列应用逻辑变现为RDD的转换
@@ -285,7 +341,7 @@
   - 只有在执行动作类操作的时候才会触发所有计算
 
 
-### 1.6.2. transformation 算子
+### 1.7.2. transformation 算子
 
 ![spark-20](./image/spark-20.png)
 
@@ -312,7 +368,7 @@
     > 抽样。true的话是有放回抽样。fraction抽样比例。seed种子
 
 
-### 1.6.3. action算子
+### 1.7.3. action算子
 
 ![spark-19](./image/spark-19.png)
 
@@ -336,7 +392,7 @@
     > 将计算结果回收到Driver端。**放到JVM内存中。如果结果特别大，就不要调了。可能OOM**
 
 
-### 1.6.4. 持久化算子/控制算子
+### 1.7.4. 持久化算子/控制算子
 
 - 背景
   > ![spark-21](./image/spark-21.png) 
@@ -417,9 +473,272 @@
         sc.stop()
     ```
 
-## 1.7. 共享变量
 
-### 1.7.1. 广播变量
+
+## 1.8. 部署
+
+### 1.8.1. standalone
+
+#### 1.8.1.1. 部署流程
+
+- 注意一点：
+  - spark集群会去/user/bin目录下找java的软链接。
+  - 如果是通过rpm安装的jdk，升级jdk时
+  - 除了要更改环境变量
+  - 也要修改/user/bin下的软链接
+
+- 修改slave，添加worker从节点
+- 修改spark-env
+  - SPARK_MASTER_HOST=node0011
+  - SPARK_MASTER_POST=7077
+  - SPARK_WORKER_CORES=2
+  - SPARK_WORKER_MEMORY=3g
+    > 这个只是逻辑最高定为3g，如果实际内存只给了2g也不会报错
+- 进入8080端口，查看webUI界面
+
+#### 1.8.1.2. 运行原理
+
+##### Client模式
+
+- C-S架构
+  > ![spark-29](./image/spark-29.png)-
+  ```
+  比如使用node0001,node0002,node0003搭建了一个spark集群。
+  提交端口为spark://node0011:7077
+
+  在node0004上使用spark-submit命令提交应用
+  那么node0004就是客户端(没有跑work，master)
+  ```
+
+- 提交任务命令
+  > 也就是默认 client
+  ```
+  ./spark-sumbit --master spark://node0011:7077 --class ...
+  ./spark-sumbit --master spark://node0011:7077 --deploy-mode client --class ...
+  ```
+
+
+- Driver与集群的通信包括：
+  > Driver可以理解成SparkContext
+  1. Driver负责应用程序资源的申请
+  2. 任务的分发。
+  3. 结果的回收。
+  4. 监控task执行情况。
+
+- 流程
+  > ![spark-28](./image/spark-28.png) 
+  - 在Spark客户端submit提交任务，Driver会在客户端启动
+  - worker向master汇报资源情况,master记录集群的资源情况
+  - Driver向master申请资源
+  - master找到满足要求的worker，
+  - master反馈给Driver
+  - Driver向Worker发送命令,开启Executor
+  - Driver向Worker发送task，监控task执行，然后回收结果
+
+
+- 缺点
+  - spark基于standalone-client模式提交任务的话，每个spark application都会有自己的Driver。会有多个Driver进程
+  - 因为Driver要发送Task，监控Task，回收结果。会有网络通信
+  - 当driver过多时，容易造成网卡流量激增的问题。
+
+- 适用：
+  - 适用于应用程序测试，
+  - 可以看到执行流程和结果
+
+##### cluster模式
+
+- 同样是CS架构，
+  - 只不过Driver位置是动态的，
+  - 将Driver分散到Worker中
+
+- 提交命令：
+  ```
+  ./spark-submit 
+  --master spark://node0001:7077 
+  --deploy-mode cluster
+  --class org.apache.spark.examples.SparkPi 
+  ../lib/spark-examples-1.6.0-hadoop2.6.0.jar 
+  ```
+- 过程
+  > ![spark-30](./image/spark-30.png) 
+  - 在客户端通过submit启动任务
+  - 客户端向master申请启动Driver
+  - master收到请求后，会**随机**找一台满足资源要求的Worker节点启动Driver(接下来的流程和client就相同了)
+  - worker向master汇报资源情况,master记录集群的资源情况
+  - Driver(位于worker上)向master申请资源
+  - master找到满足要求的worker
+  - master反馈给Driver(位于worker上)
+  - Driver向Worker发送命令,开启Executor
+  - Driver(位于worker上)向Worker发送task，监控task执行，然后回收结果
+
+- 适用：
+  - 适用于生产环境
+  - 必须去webUI(spark的webUI,8080)中查看日志输出和结果
+    > 变化：1.6版本中，stdout只有最终结果。而日志放在了stderr。
+    > 2.x后，日志也放到了stdout
+
+### 1.8.2. yarn
+
+#### 1.8.2.1. 部署流程
+
+> 其他与standalone流程相同
+
+- 基于yarn 提交任务有可能报错虚拟内存不足
+	> 在每台节点中的yarn-site.xml中配值关闭虚拟内存检查
+  ```xml
+  vim /root/hadoop-2.5.2/etc/hadoop/yarn-site.xml
+	<property>  
+		<name>yarn.nodemanager.vmem-check-enabled</name>  
+		<value>false</value>  
+	</property>
+  ```
+
+#### 1.8.2.2. 运行原理
+
+##### Client
+
+- 提交命令
+  ```
+  ./spark-submit 
+  --master yarn
+  --class org.apache.spark.examples.SparkPi ../lib/spark-examples-1.6.0-hadoop2.6.0.jar
+  100
+
+  ./spark-submit 
+  --master yarn–client
+  --class org.apache.spark.examples.SparkPi ../lib/spark-examples-1.6.0-hadoop2.6.0.jar
+  100
+
+  ./spark-submit 
+  --master yarn 
+  --deploy-mode  client 
+  --class org.apache.spark.examples.SparkPi ../lib/spark-examples-1.6.0-hadoop2.6.0.jar
+  100
+  ```
+
+- 流程
+  > ![spark-31](./image/spark-31.png) 
+  - 客户端提交一个Application，在客户端启动一个Driver进程。
+  - 应用程序启动后会向RS(ResourceManager)发送请求，请求启动AM(ApplicationMaster)的资源。
+  - RS收到请求， **随机** 选择一台NM(NodeManager)启动AM。这里的NM相当于Standalone中的Worker节点。
+  - AM启动后，会向RS请求一批container资源，用于启动Executor.
+  - RS会找到一批NM返回给AM,用于启动Executor。
+  - AM会向NM发送命令启动Executor。
+    - task跑在线程池中
+  - Executor启动后，会反向注册给Driver，Driver发送task到Executor,执行情况和结果返回给Driver端。
+    - 反向注册：Executor向Driver申请task
+
+- 适用：
+  - Yarn-client模式同样是适用于测试，
+  - 因为Driver运行在本地，Driver会与yarn集群中的Executor进行大量的通信，会造成客户机网卡流量的大量增加.
+
+##### Cluster
+
+- 与client相比，仅仅是Driver启动位置不同
+
+- 提交命令：
+  ```
+  ./spark-submit 
+  --master yarn 
+  --deploy-mode cluster 
+  --class org.apache.spark.examples.SparkPi ../lib/spark-examples-1.6.0-hadoop2.6.0.jar
+  100
+
+  ./spark-submit 
+  --master yarn-cluster
+  --class org.apache.spark.examples.SparkPi ../lib/spark-examples-1.6.0-hadoop2.6.0.jar
+  100
+  ```
+
+- 流程
+  > ![spark-27](./image/spark-27.png) 
+  - 客户机提交Application应用程序，发送请求到RS(ResourceManager),请求启动AM(ApplicationMaster)。
+  - RS收到请求后随机在一台NM(NodeManager)上启动AM（相当于Driver端）。
+  - AM启动，AM发送请求到RS，请求一批container用于启动Executor。
+  - RS返回一批NM节点给AM。
+  - AM连接到NM,发送请求到NM启动Executor。
+  - Executor反向注册到AM所在的节点的Driver。Driver发送task到Executor。
+
+
+- 适用：
+  - Yarn-Cluster主要用于生产环境中，
+  - 因为Driver运行在Yarn集群中某一台nodeManager中，每次提交任务的Driver所在的机器都是随机的，
+  - 不会产生某一台机器网卡流量激增的现象，缺点是任务提交后不能看到日志。只能通过yarn查看日志。
+  - 需要去yarn的webui中查看（yarn的webui:8088）
+
+### 1.8.4. sbt 设置
+
+- sbt 配置文件
+  ```
+  -Dsbt.override.build.repos=true  # 设置配置文件覆盖掉预设的配置
+  -Dsbt.coursier.home=D:/learn/sbt/data/coursier # 设置courier目录。idea下载依赖都是下载到这里。不清楚为什么
+  -Dsbt.global.base=D:/learn/sbt/data/.sbt # 设置base目录，会存放一些东西
+  -Dsbt.ivy.home=D:/learn/sbt/data/.ivy2  # 设置ivy2目录，会存放依赖
+  -Dsbt.boot.directory=D:/learn/sbt/data/.sbt/boot # 设置boot目录。不知道存放啥
+  -Dsbt.repository.config=D:/learn/sbt/conf/repo.properties # 设置仓库配置文件夹。可以选择阿里云源
+  -Dsbt.repository.secure=false  # 不清楚
+  -Dsbt.log.format=true  # 
+  -Dfile.encoding=UTF8 # 设置编码
+  -Xmx512M  # 设置 sbt-launcher 执行的堆最大内存
+  -Xss2M
+  -XX:+CMSClassUnloadingEnabled
+  # 设置代理
+  -DsocksProxyHost=127.0.0.1
+  -DsocksProxyPort=10808
+  ```
+
+
+## 1.9. 补充算子
+
+- transformation
+  - join,leftOuterJoin,rightOuterJoin,fullOuterJoin
+    > 作用在K,V格式的RDD上。根据K进行连接，对（K,V）join(K,W)返回（K,(V,W)）
+    > join后的分区数与父RDD分区数多的那一个相同。
+  - union
+    > 合并两个数据集。两个数据集的类型要一致。
+    > 返回新的RDD的分区数是合并RDD分区数的总和。
+  - intersection
+    > 取两个数据集的交集，返回新的RDD与父RDD分区多的一致
+  - subtract
+    > 取两个数据集的差集，结果RDD的分区数与subtract前面的RDD的分区数一致。
+  - mapPartitions
+    > 与map类似，遍历的单位是每个partition上的数据。
+  - distinct(map+reduceByKey+map)
+  - cogroup 
+    > 当调用类型（K,V）和（K，W）的数据上时，返回一个数据集（K，（Iterable<V>,Iterable<W>）），子RDD的分区与父RDD多的一致。
+- action
+  - foreachPartition
+    > 遍历的数据是每个partition的数据
+
+## 术语回顾
+
+![spark-32](./image/spark-32.png)
+
+## 1.10. spark 执行原理细节
+
+### 1.10.1. RDD宽窄依赖与阶段划分
+
+### 1.10.2. 计算模式
+
+### 1.10.3. 任务切分与task发送
+
+### 1.10.4. 资源调度与任务调度
+
+## 1.11. PV,UV
+
+## 1.12. submit 参数
+
+## 1.13. 源码解析
+
+### 1.13.1. submit源码
+
+### 1.13.2. 资源调度源码
+
+### 1.13.3. 任务调度源码
+
+## 1.14. 共享变量
+
+### 1.14.1. 广播变量
 
 - 问题代码
   ```scala
@@ -458,7 +777,7 @@
   sc.stop()
   ```
 
-### 1.7.2. 累加器
+### 1.14.2. 累加器
 
 - 问题示例
   > ![spark-26](./image/spark-26.png) 
@@ -493,126 +812,23 @@
   ```
 
 
-## 1.8. DAG优化原理Lineage
+## 1.15. WebUI
 
-- RDD转换构成DAG有向无环图
-  > ![spark-6](./image/spark-6.png) 
+## 1.16. 历史日志服务器
 
-- spark 容错机制
-  - RDD都是根据RAG中的路径转换过来的
-  - 转换前的RDD可以称为转换后RDD的父
-    > **血缘关系**
-  - 任何一个RDD丢失后都可以通过从父RDD重新转换重新得到
+## 1.17. Spark Master
 
-- job划分stage
-  - 相关概念
-    - 宽依赖（Wide Dependency）
-      - 宽依赖则表现为存在一个父RDD的一个分区对应一个子RDD的多个分区
-      - 而且只要发生了shuffle，就一定是宽依赖。
-        > **只要发生shuffle，就一定要写磁盘。因此无法进行流水线优化**
-    - 窄依赖（Narrow Dependency）
-      - 一个父RDD的分区对应于一个子RDD的分区
-      - 或多个父RDD的分区对应于一个子RDD的分区
-    - 图解
-      > ![spark-8](./image/spark-8.png) 
-  - 根据DAG图的依赖关系划分
-    - 窄依赖不划分阶段
-    - 宽依赖划分阶段
+### 1.17.1. HA
 
-- 优化原理
-  - spark的fork/join机制:
-    > ![spark-9](./image/spark-9.png) 
-    - 是一种并行执行的框架
-    - 先将分区 fork(分支)到不同机器上
-      - 也就是一个分区分成多个分支
-      - 交给不同机器进行处理
-    - 然后再将执行结果join起来
-  - 一般情况：
-    - 多个fork/join连接起来
-    - 第一个fork/join的所有分支都完成，才能执行下一个fork/join
-    - 也就是说只要有一个分支没完成，join就不能完成
-  - 优化情况：
-    - 示例
-      > 以带着一班人坐飞机从背景，途径上海到厦门
-      - 优化前：
-        > ![spark-10](./image/spark-10.png) 
-      - 优化后
-        > ![spark-11](./image/spark-11.png) 
-  - 划分原因：
+### 1.17.2. 切换验证
 
-- 划分示例：
-  > ![spark-12](./image/spark-12.png) 
-  - DAG图通过递归算法生成阶段划分
-  - 有兴趣可以查一下
+### 1.17.3. pipeline
+
+## 1.18. Spark shuffle
 
 
-## 1.9. 运行架构
+# 2. Spark sql
 
-- 架构
-  > ![spark-2](./image/spark-2.png)
-  - SparkContext
-    - 是整个应用程序的指挥官
-    - 代表了应用程序连接集群的通道
-  - Cluster Manager
-    - 种类：
-      - spark自带的(一般不用)
-      - hadoop的yarn
-      - mesos
-    - 资源：
-      - cpu
-      - 内存
-      - 带宽
-  - Worker Node
-    > ![spark-3](./image/spark-3.png) 
-    - 作用:
-      - 驻留Executor 进程
-      - Executor会派生出很多线程，每个线程用来执行一个**任务**
+# 3. Spark Streaming
 
-- 运行流程：
-  - 步骤1
-    - 往集群中提交应用程序
-    - 确定driver节点
-    - Driver节点上创建SparkContext对象
-    - SparkContext向资源管理器申请运行Executor的资源
-    - 资源管理器分配资源,在worknode上开启Executor
-    - Executor运行情况将随着“心跳”发送到资源管理器上
-  - 步骤2
-    - SparkContext根据代码中的RDD依赖关系生成DAG
-    - DAG被提交到DAG Scheduler中解析
-    - DAG Scheduler将DAG切成不同的Stage(阶段)
-    - 再把stage提交给Task Scheduler
-  - 步骤3
-    - Worker Node**主动** 向Task Scheduler申请任务运行
-    - Task Scheduler把任务分配下去
-      - **计算向数据靠拢**原则。Task Scheduler会把任务发送给存有相关数据的机器
-  - 步骤4
-    - Executor 派生线程，线程执行具体任务
-    - 运行得到结果返回给Task Scheduler
-    - Task Scheduler将结果返回给DAG Scheduler
-    - DAG Scheduler 将结果返回给 SparkContext
-    - SparkContext返回数据给用户或者写入到HBase中等
-    - 运行完毕后写入数据并释放所有资源。
-  - 图解：
-    > ![spark-7](./image/spark-7.png) 
-
-## 1.10. 部署
-
-- sbt 配置文件
-  ```
-  -Dsbt.override.build.repos=true  # 设置配置文件覆盖掉预设的配置
-  -Dsbt.coursier.home=D:/learn/sbt/data/coursier # 设置courier目录。idea下载依赖都是下载到这里。不清楚为什么
-  -Dsbt.global.base=D:/learn/sbt/data/.sbt # 设置base目录，会存放一些东西
-  -Dsbt.ivy.home=D:/learn/sbt/data/.ivy2  # 设置ivy2目录，会存放依赖
-  -Dsbt.boot.directory=D:/learn/sbt/data/.sbt/boot # 设置boot目录。不知道存放啥
-  -Dsbt.repository.config=D:/learn/sbt/conf/repo.properties # 设置仓库配置文件夹。可以选择阿里云源
-  -Dsbt.repository.secure=false  # 不清楚
-  -Dsbt.log.format=true  # 
-  -Dfile.encoding=UTF8 # 设置编码
-  -Xmx512M  # 设置 sbt-launcher 执行的堆最大内存
-  -Xss2M
-  -XX:+CMSClassUnloadingEnabled
-  # 设置代理
-  -DsocksProxyHost=127.0.0.1
-  -DsocksProxyPort=10808
-  ```
 
