@@ -74,13 +74,17 @@
   - 比如一个wordCount代码，就是一个应用
   - 相关层级：
     - 一个应用程序提交后，会生成多个**作业(Job)**
+      > job可以看作和action算子对应
     - 每个作业都会被切割成多个任务集，称为**阶段(Stage)**
-    - 每个阶段中包含多个任务
+    - 每个阶段中包含多个**任务(task)**
+      > stage中的task并行执行
     - 图解：
       > ![spark-4](./image/spark-4.png) 
 
 
 ## 1.3. 基础运行架构
+
+### 1.3.1. 运行架构
 
 - 架构
   > ![spark-2](./image/spark-2.png)
@@ -130,6 +134,58 @@
     > ![spark-7](./image/spark-7.png) 
 
 
+### 1.3.2. DAG优化原理Lineage
+
+- RDD转换构成DAG有向无环图
+  > ![spark-6](./image/spark-6.png) 
+
+- spark 容错机制
+  - RDD都是根据RAG中的路径转换过来的
+  - 转换前的RDD可以称为转换后RDD的父
+    > **血缘关系**
+  - 任何一个RDD丢失后都可以通过从父RDD重新转换重新得到
+
+- job划分stage
+  - 相关概念
+    - 宽依赖（Wide Dependency）
+      - 宽依赖则表现为存在一个父RDD的一个分区对应一个子RDD的多个分区
+      - 而且只要发生了shuffle，就一定是宽依赖。
+        > **只要发生shuffle，就一定要写磁盘。因此无法进行流水线优化**
+    - 窄依赖（Narrow Dependency）
+      - 一个父RDD的分区对应于一个子RDD的分区
+      - 或多个父RDD的分区对应于一个子RDD的分区
+    - 图解
+      > ![spark-8](./image/spark-8.png) 
+  - 根据DAG图的依赖关系划分
+    - 窄依赖不划分阶段
+    - 宽依赖划分阶段
+
+- 优化原理
+  - spark的fork/join机制:
+    > ![spark-9](./image/spark-9.png) 
+    - 是一种并行执行的框架
+    - 先将分区 fork(分支)到不同机器上
+      - 也就是一个分区分成多个分支
+      - 交给不同机器进行处理
+    - 然后再将执行结果join起来
+  - 一般情况：
+    - 多个fork/join连接起来
+    - 第一个fork/join的所有分支都完成，才能执行下一个fork/join
+    - 也就是说只要有一个分支没完成，join就不能完成
+  - 优化情况：
+    - 示例
+      > 以带着一班人坐飞机从背景，途径上海到厦门
+      - 优化前：
+        > ![spark-10](./image/spark-10.png) 
+      - 优化后
+        > ![spark-11](./image/spark-11.png) 
+  - 划分原因：
+
+- 划分示例：
+  > ![spark-12](./image/spark-12.png) 
+  - DAG图通过递归算法生成阶段划分
+  - 有兴趣可以查一下
+
 ## 1.4. RDD特性详解
 
 - RDD的五大特性：
@@ -139,7 +195,8 @@
       > 默认RDD和文件的Block一对一。<br />
       > 每个partition都是一个task
     - 2.算子（函数）是**作用在每一个partition（split）**上的。
-      > 不是RDD上
+      > 不是RDD上<br />
+      > 但实际其实是类似管道的处理模式，并不是一个一个得处理
     - 3.RDD之间有一系列的依赖关系。
       > 当RDD2丢失后，使用两个RDD间的算子，可以从RDD1重新生成RDD2<br />
       > 这也是弹性的体现
@@ -208,9 +265,9 @@
       val conf = new SparkConf().setAppName("wordcount").setMaster("local")
       val sc = new SparkContext(conf)
       sc.setLogLevel("Error")
-      sc.textFile("./data/words").flatMap( _.split(" ")).map((_,1)).reduceByKey(_+_).foreach(println)
-      // 也可以通过sc.parallelize将集合转换为RDD
-      // 也可以通过sc.makeRDD()将集合转换为RDD
+      sc.textFile("./data/words").flatMap( _.split(" ")).map((_,1)).reduceByKey(_+_).foreach(println)// 第二个参数指定分区数
+      // 也可以通过sc.parallelize将集合转换为RDD，第二个参数指定分区数
+      // 也可以通过sc.makeRDD()将集合转换为RDD,第二个参数指定分区数
       sc.stop()
 
       // 下面的是演示代码。没有使用链式编程。上面的用了
@@ -366,6 +423,7 @@
     > 作用在K,V格式的RDD上，对key进行升序或者降序排序。
   - sample()
     > 抽样。true的话是有放回抽样。fraction抽样比例。seed种子
+  - groupByKey()
 
 
 ### 1.7.3. action算子
@@ -390,6 +448,7 @@
     > 循环遍历数据集中的每个元素，运行相应的逻辑。
   - collect
     > 将计算结果回收到Driver端。**放到JVM内存中。如果结果特别大，就不要调了。可能OOM**
+  - reduce
 
 
 ### 1.7.4. 持久化算子/控制算子
@@ -496,9 +555,9 @@
     > 这个只是逻辑最高定为3g，如果实际内存只给了2g也不会报错
 - 进入8080端口，查看webUI界面
 
-#### 1.8.1.2. 运行原理
+#### 1.8.1.2. 运行原理(重要)
 
-##### Client模式
+##### 1.8.1.2.1. Client模式
 
 - C-S架构
   > ![spark-29](./image/spark-29.png)-
@@ -545,7 +604,7 @@
   - 适用于应用程序测试，
   - 可以看到执行流程和结果
 
-##### cluster模式
+##### 1.8.1.2.2. cluster模式
 
 - 同样是CS架构，
   - 只不过Driver位置是动态的，
@@ -593,9 +652,9 @@
 	</property>
   ```
 
-#### 1.8.2.2. 运行原理
+#### 1.8.2.2. 运行原理(重要)
 
-##### Client
+##### 1.8.2.2.1. Client
 
 - 提交命令
   ```
@@ -632,7 +691,7 @@
   - Yarn-client模式同样是适用于测试，
   - 因为Driver运行在本地，Driver会与yarn集群中的Executor进行大量的通信，会造成客户机网卡流量的大量增加.
 
-##### Cluster
+##### 1.8.2.2.2. Cluster
 
 - 与client相比，仅仅是Driver启动位置不同
 
@@ -666,7 +725,7 @@
   - 不会产生某一台机器网卡流量激增的现象，缺点是任务提交后不能看到日志。只能通过yarn查看日志。
   - 需要去yarn的webui中查看（yarn的webui:8088）
 
-### 1.8.4. sbt 设置
+### 1.8.3. sbt 设置
 
 - sbt 配置文件
   ```
@@ -691,54 +750,167 @@
 ## 1.9. 补充算子
 
 - transformation
-  - join,leftOuterJoin,rightOuterJoin,fullOuterJoin
-    > 作用在K,V格式的RDD上。根据K进行连接，对（K,V）join(K,W)返回（K,(V,W)）
-    > join后的分区数与父RDD分区数多的那一个相同。
+  - join, leftOuterJoin, rightOuterJoin, fullOuterJoin
+    - 说明：作用在K,V格式的RDD上。根据K进行连接，对（K,V）join(K,W)返回（K,(V,W)）
+    - 结果类型：使用 leftOuterJoin, rightOuterJoin, fullOuterJoin的话，返回的value元组的右侧，左侧，两侧会为Option类型
+      > 因为可能取不到值
+    - 分区数量：如果两个分区数量不同的RDD执行join操作，那么结果RDD的分区数是较大的那个
   - union
-    > 合并两个数据集。两个数据集的类型要一致。
-    > 返回新的RDD的分区数是合并RDD分区数的总和。
+    - 说明 合并两个数据集。两个数据集的类型要一致。
+    - 分区数量：返回的结果RDD的分区数是两个RDD分区数的总和。
   - intersection
-    > 取两个数据集的交集，返回新的RDD与父RDD分区多的一致
+    - 说明：取两个数据集的交集
+    - 分区数量：返回新的RDD与父RDD分区多的一致
   - subtract
-    > 取两个数据集的差集，结果RDD的分区数与subtract前面的RDD的分区数一致。
-  - mapPartitions
-    > 与map类似，遍历的单位是每个partition上的数据。
-  - distinct(map+reduceByKey+map)
+    - 说明：取两个数据集的差集，
+    - 分区数量：结果RDD的分区数与subtract前面的RDD的分区数一致。
+  - mapPartitions(iter)
+    - 说明：
+      - 本质就是map，只是操作单位成了分区，而不是行
+      - 与map类似，遍历的单位是每个partition上的数据。
+      - 如果有两个分区，就会执行两次。
+      - iter为**一个分区**中所有数据的迭代器对象
+      - 注意：该算子是transformation算子，**最后会返回map后的RDD**
+    - 解决问题：
+      - 将每一行数据插入到数据库中，比如使用map或者foreach，因为每次只会处理一行数据，需要频繁创建数据库连接
+      - 可以通过该方法分别将每个分区的数据拿出来存到listBuffer中，再建立数据库连接。
+      - 如果插入数据后不需要使用RDD了，想直接结束，那么可以使用foreachPartitions。
+      - 示例
+        ```scala
+        rdd.mapPartitions(iter=>{
+        val list = new ListBuffer[String]
+        println("建立数据库连接")
+        while(iter.hasNext){
+          list.+=(iter.next())
+        }
+        println("插入数据")
+        println("关闭数据库连接")
+
+        list.iterator // 返回map后的数据的迭代器
+        })
+        ```
+  - distinct()
+    - 说明：去重
+    - 实现原理：
+      - map
+      - reduceByKey
+      - map
   - cogroup 
-    > 当调用类型（K,V）和（K，W）的数据上时，返回一个数据集（K，（Iterable<V>,Iterable<W>）），子RDD的分区与父RDD多的一致。
+    - 说明：当调用类型（K,V）和（K，W）的数据上时，返回一个数据集`（K，（Iterable<V>,Iterable<W>））`，
+    - 分区数量：子RDD的分区与父RDD多的一致。
+    - 示例：
+      ```scala
+      rdd1 = parallelize(List[(String,Int)])(
+        ("key1",1),
+        ("key1",1),
+        ("key2",1),
+      )
+      rdd2 = parallelize(List[(String,Int)])(
+        ("key1",2),
+        ("key1",2),
+        ("key2",2),
+      )
+      rdd3(String,(Iterator[Int],Iterator[Int])) = rdd1.cogroup(rdd2)
+      
+      // 结果rdd中，String是key
+      // 第一个Iterator是rdd1中，key对应的所有值。比如key1的第一个iterator中值为1,1
+      // 第二个Iterator是rdd2中，key对应的所有值。比如key1的第二个iterator中值为2,2
+      ```
 - action
   - foreachPartition
-    > 遍历的数据是每个partition的数据
+    - 说明：
+      - 遍历的数据是每个partition的数据
+      - 本质就是foreach
+      - 只是操作单位是分区
 
-## 术语回顾
+## 1.10. 术语回顾
 
 ![spark-32](./image/spark-32.png)
 
-## 1.10. spark 执行原理细节
+- cluster manager:就是指资源调度框架
+- Appalication:
+  - Driver程序：就是SparkContext
+  - **每一个Appalication有自己独立的Driver**
+  - executor: 就是task中的业务逻辑
+- Driver Program :就是Driver，用来发送task
 
-### 1.10.1. RDD宽窄依赖与阶段划分
+## 1.11. spark 执行原理细节
 
-### 1.10.2. 计算模式
+### 1.11.1. RDD宽窄依赖与阶段划分复习
 
-### 1.10.3. 任务切分与task发送
+![spark-33](./image/spark-33.png)
 
-### 1.10.4. 资源调度与任务调度
+![spark-34](./image/spark-34.png)
 
-## 1.11. PV,UV
+- 宽依赖涉及了节点间的数据传输，有shuffle
 
-## 1.12. submit 参数
+### 1.11.2. 计算模式
 
-## 1.13. 源码解析
+#### stage划分
 
-### 1.13.1. submit源码
+![spark-35](./image/spark-35.png)
 
-### 1.13.2. 资源调度源码
+- 遇见宽依赖就划一刀
 
-### 1.13.3. 任务调度源码
+#### RDD不存储数据
 
-## 1.14. 共享变量
+![spark-36](./image/spark-36.png)
 
-### 1.14.1. 广播变量
+- RDD中放的是具体的处理逻辑
+
+#### 数据处理模式
+
+- 管道处理模式
+  - 不是把每一步把全部数据处理完后，放到内存中，再进行下一步的处理
+  - 而每一条数据一条链处理下去，不会有中间结果(除非使用持久化算子)，再进行下一步处理
+  - 如同：`f3(f2(f1(data)))`
+  - 每一条数据的处理可以看作一个管道，中间结果不会写入磁盘
+  - 最后落地，才会处理下一条
+    - shuffle write 时落地
+    - RDD进行持久化时
+
+- stage中的task并行
+  > **stage间肯定是顺序执行，一个stage的输出是另一个stage的输入**
+  > ![spark-37](./image/spark-37.png) 
+  - 两个管道并行处理
+  - 根据数据来源分发task，**计算向数据移动**
+
+- stage的并行度：
+  - 由stage中最后一个RDD的分区数决定
+  - 但前面的RDD也会影响并行度
+  - 例
+    > ![spark-38](./image/spark-38.png) 
+
+- 一些问题：
+  - stage中的task处理逻辑都是相同的？
+    - 不是
+    - 例：下面四个task
+      > ![spark-38](./image/spark-38.png) 
+  - 如何提高并行度：
+    - 增加分区数
+    - 使用带有shuffle的算子时，指定分区数
+      - 比如：reduceBykey，join，distinct等，基本上bykey的都是带有shuffle的算子
+
+
+### 1.11.3. 任务切分与task发送
+
+### 1.11.4. 资源调度与任务调度
+
+## 1.12. PV,UV
+
+## 1.13. submit 参数
+
+## 1.14. 源码解析
+
+### 1.14.1. submit源码
+
+### 1.14.2. 资源调度源码
+
+### 1.14.3. 任务调度源码
+
+## 1.15. 共享变量
+
+### 1.15.1. 广播变量
 
 - 问题代码
   ```scala
@@ -777,7 +949,7 @@
   sc.stop()
   ```
 
-### 1.14.2. 累加器
+### 1.15.2. 累加器
 
 - 问题示例
   > ![spark-26](./image/spark-26.png) 
@@ -812,19 +984,19 @@
   ```
 
 
-## 1.15. WebUI
+## 1.16. WebUI
 
-## 1.16. 历史日志服务器
+## 1.17. 历史日志服务器
 
-## 1.17. Spark Master
+## 1.18. Spark Master
 
-### 1.17.1. HA
+### 1.18.1. HA
 
-### 1.17.2. 切换验证
+### 1.18.2. 切换验证
 
-### 1.17.3. pipeline
+### 1.18.3. pipeline
 
-## 1.18. Spark shuffle
+## 1.19. Spark shuffle
 
 
 # 2. Spark sql
