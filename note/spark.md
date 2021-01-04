@@ -1003,4 +1003,532 @@
 
 # 3. Spark Streaming
 
+## 基础
+
+### 说明
+
+### WordCount
+
+```scala
+/**
+  * SparkStreaming 注意：
+  * 1.需要设置local[2]，因为一个线程是读取数据，一个线程是处理数据
+  * 2.创建StreamingContext两种方式，如果采用的是StreamingContext(conf,Durations.seconds(5))这种方式，不能在new SparkContext
+  * 3.Durations 批次间隔时间的设置需要根据集群的资源情况以及监控每一个job的执行时间来调节出最佳时间。
+  * 4.SparkStreaming所有业务处理完成之后需要有一个output operato操作
+  * 5.StreamingContext.start()straming框架启动之后是不能在次添加业务逻辑
+  * 6.StreamingContext.stop()无参的stop方法会将sparkContext一同关闭，stop(false) ,默认为true，会一同关闭
+  * 7.StreamingContext.stop()停止之后是不能在调用start
+  */
+object WordCountFromSocket {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setAppName("WordCountOnLine").setMaster("local[2]")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+    ssc.sparkContext.setLogLevel("ERROR")
+    //使用new StreamingContext(conf,Durations.seconds(5)) 这种方式默认会创建SparkContext
+//    val sc = new SparkContext(conf)
+    //从ssc中获取SparkContext()
+//    val context: SparkContext = ssc.sparkContext
+
+    val lines: ReceiverInputDStream[String] = ssc.socketTextStream("c7node5",9999)
+    val words: DStream[String] = lines.flatMap(line=>{line.split(" ")})
+    val pairWords: DStream[(String, Int)] = words.map(word=>{(word,1)})
+    val result: DStream[(String, Int)] = pairWords.reduceByKey((v1, v2)=>{v1+v2})
+
+    result.print()
+
+    /**
+      * foreachRDD 注意事项：
+      * 1.foreachRDD中可以拿到DStream中的RDD，对RDD进行操作，但是一点要使用RDD的action算子触发执行，不然DStream的逻辑也不会执行
+      * 2.froeachRDD算子内，拿到的RDD算子操作外，这段代码是在Driver端执行的，可以利用这点做到动态的改变广播变量
+      *
+      */
+//    result.foreachRDD(wordCountRDD=>{
+//
+//      println("******* produce in Driver *******")
+//
+//      val sortRDD: RDD[(String, Int)] = wordCountRDD.sortByKey(false)
+//      val result: RDD[(String, Int)] = sortRDD.filter(tp => {
+//        println("******* produce in Executor *******")
+//        true
+//      })
+//      result.foreach(println)
+//    })
+
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop(false)
+
+  }
+}
+```
+
+## 算子
+
+### UpdataStateByKey
+
+```scala
+/**
+  * UpdateStateByKey 根据key更新状态
+  *   1、为Spark Streaming中每一个Key维护一份state状态，state类型可以是任意类型的， 可以是一个自定义的对象，那么更新函数也可以是自定义的。
+  *   2、通过更新函数对该key的状态不断更新，对于每个新的batch而言，Spark Streaming会在使用updateStateByKey的时候为已经存在的key进行state的状态更新
+  */
+object UpdateStateByKey {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setMaster("local[2]")
+    conf.setAppName("UpdateStateByKey")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+    //设置日志级别
+    ssc.sparkContext.setLogLevel("ERROR")
+    val lines: ReceiverInputDStream[String] = ssc.socketTextStream("c7node5",9999)
+    val words: DStream[String] = lines.flatMap(line=>{line.split(" ")})
+    val pairWords: DStream[(String, Int)] = words.map(word => {
+      (word, 1)
+    })
+
+    /**
+      * 根据key更新状态，需要设置 checkpoint来保存状态。是必须的
+      * 默认key的状态在内存中 有一份，在checkpoint目录中有一份。
+      *
+      *    多久会将内存中的数据（每一个key所对应的状态）写入到磁盘上一份呢？
+      * 	      如果你的batchInterval小于10s  那么10s会将内存中的数据写入到磁盘一份
+      * 	      如果bacthInterval 大于10s，那么就以bacthInterval为准
+      *
+      *    这样做是为了防止频繁的写HDFS
+      */
+    ssc.checkpoint("./data/streamingCheckpoint")
+
+    /**
+      * currentValues :当前批次某个 key 对应所有的value 组成的一个集合
+      * preValue : 以往批次当前key 对应的总状态值
+      */
+    val result: DStream[(String, Int)] = pairWords.updateStateByKey((currentValues: Seq[Int], preValue: Option[Int]) => {
+      var totalValues = 0
+      if (!preValue.isEmpty) {
+        totalValues += preValue.get
+      }
+      for(value <- currentValues){
+        totalValues += value
+      }
+
+      Option(totalValues)
+    })
+    result.print()
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop()
+
+  }
+}
+
+```
+
+### WindowOperation
+
+```scala
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.{Durations, StreamingContext}
+import org.apache.spark.SparkConf
+
+/**
+  * SparkStreaming 窗口操作
+  * reduceByKeyAndWindow
+  * 每隔窗口滑动间隔时间 计算 窗口长度内的数据，按照指定的方式处理
+  */
+object WindowOperator {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setAppName("windowOperator")
+    conf.setMaster("local[2]")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+    ssc.sparkContext.setLogLevel("Error")
+    val lines: ReceiverInputDStream[String] = ssc.socketTextStream("c7node5",9999)
+    val words: DStream[String] = lines.flatMap(line=>{line.split(" ")})
+    val pairWords: DStream[(String, Int)] = words.map(word=>{(word,1)})
+
+    /**
+      * 窗口操作普通的机制
+      * 滑动间隔和窗口长度必须是 batchInterval 整数倍
+      */
+//    val windowResult: DStream[(String, Int)] =
+//      pairWords.reduceByKeyAndWindow((v1:Int, v2:Int)=>{v1+v2},Durations.seconds(15),Durations.seconds(5))
+
+    /**
+      * 窗口操作优化的机制
+      * 与普通方式相比，就是需要多传入一个函数
+      * 注意：必须需要设置checkpoint
+      * 减去出去的，加上新加的
+      */
+    ssc.checkpoint("./data/streamingCheckpoint")
+    val windowResult: DStream[(String, Int)] = pairWords.reduceByKeyAndWindow(
+      (v1:Int, v2:Int)=>{v1+v2},  // 加上新进入的批次
+      (v1:Int, v2:Int)=>{v1-v2},  // 减去出去的批次
+      Durations.seconds(15),
+      Durations.seconds(5))
+
+    /**
+     * reduceByKeyAndWindow是使用窗口的一种特殊实现，
+     * 也可以这样指定窗口，生成窗口内的所有批次合起来后的DStream，在自己写指定逻辑，而不使用reduceByKeyAndWindow
+     *
+     * val ds:DStream[(String,Int)] = pairWords.window(Durations.seconds(15),Durations.seconds(5))
+     * 每隔5秒生成含有最近15秒批次的DStream
+     * reduceByKeyAndWindow只是一种特殊的实现
+     */
+
+    windowResult.print()
+
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop()
+
+  }
+}
+```
+
+### Transformation
+
+```scala
+object TransformBlackList {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setAppName("transform")
+    conf.setMaster("local[2]")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+//    ssc.sparkContext.setLogLevel("Error")
+    /**
+      * 广播黑名单
+      */
+    val blackList: Broadcast[List[String]] = ssc.sparkContext.broadcast(List[String]("zhangsan","lisi"))
+
+    /**
+      * 从实时数据【"hello zhangsan","hello lisi"】中发现 数据的第二位是黑名单人员，过滤掉
+      */
+    val lines: ReceiverInputDStream[String] = ssc.socketTextStream("c7node5",9999)
+    val pairLines: DStream[(String, String)] = lines.map(line=>{(line.split(" ")(1),line)})
+
+  /**
+  * transform可以拿到DStream中的RDD，对RDD使用RDD的算子操作，但是最后要返回RDD,返回的RDD又被封装到一个DStream
+  * transform中拿到的RDD的算子外，代码是在Driver端执行的。可以做到动态的改变广播变量(和foreachRDD和相似)
+  *
+  */
+    val resultDStream: DStream[String] = pairLines.transform(pairRDD => {
+      println("++++Driver端执行++++")
+      val filterRDD: RDD[(String, String)] = pairRDD.filter(tp => {
+        val nameList: List[String] = blackList.value
+        !nameList.contains(tp._1)
+      })
+      val returnRDD: RDD[String] = filterRDD.map(tp => tp._2)
+      returnRDD
+    })
+
+    resultDStream.print()
+
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop()
+  }
+}
+```
+
+### saveAsTextFile
+
+```scala
+/**
+  * 将SparkSteaming处理的结果保存在指定的目录中
+  *
+  * saveAsTextFiles(prefix, [suffix])：
+  * 将此DStream的内容另存为文本文件。每批次数据产生的文件名称格式基于：prefix和suffix: "prefix-TIME_IN_MS[.suffix]".
+  *
+  * 注意：
+  * saveAsTextFile是调用saveAsHadoopFile实现的
+  * spark中普通rdd可以直接只用saveAsTextFile(path)的方式，保存到本地，但是此时DStream的只有saveAsTextFiles()方法，没有传入路径的方法，
+  * 其参数只有prefix, suffix
+  * 其实：DStream中的saveAsTextFiles方法中又调用了rdd中的saveAsTextFile方法，我们需要将path包含在prefix中
+  */
+object SaveAsTextFile {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setMaster("local")
+    conf.setAppName("saveAsTextFile")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+
+    // SparkStreaming监控指定本地目录
+    /** 注意！！！：
+     * 1.这个目录下已经存在的文件不会被监控到，可以监控增加的文件
+     * 2.增加的文件必须是原子性产生。也就是说，如果向一个文件中添加数据，不会被监控到
+     */
+    val lines: DStream[String] = ssc.textFileStream("./data/streamingCopyFile")
+    val words: DStream[String] = lines.flatMap(line=>{line.split(" ")})
+    val pairWords: DStream[(String, Int)] = words.map(word=>{(word,1)})
+    val result: DStream[(String, Int)] = pairWords.reduceByKey((v1:Int, v2:Int)=>{v1+v2})
+
+    //保存的多级目录就直接写在前缀中
+    //保存的文件以后缀结尾
+    result.saveAsTextFiles("./data/streamingSavePath/prefix","suffix")
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop()
+  }
+}
+```
+
+# 4. Kafuka
+
+## 说明
+
+- 优点：
+  - 分布式
+  - 不丢数据
+  - 可以多次消费
+
+- SparkStreaming+Kafka有什么好处
+  - 系统之间解耦
+  - 峰值压力缓冲
+    - 原本架构： flume-->SparkStreaming 。
+      - 当服务器峰值时，数据量过大，可能导致SparkStreaming瘫痪
+    - 现在：Flume-->kafka-->SparkStreaming
+      - kafka会将数据存到磁盘中
+      - kafka吞吐量非常高，使用堆外内存，零拷贝。一般公司三台kafka就完全够用
+  - 异步通信
+    > ![spark-40](./image/spark-40.png) 
+    - 一个请求队列
+    - 一个结果响应队列
+
+## 架构
+
+- 整体：
+  - 生产者消费者模式
+  - 可靠性保证：
+    - 自己不丢数据，通过零拷贝，将数据存到内存中
+    - 消费者不丢数据：默认在磁盘存7天，7天内，可以处理多次
+
+
+
+- 节点：
+  > ![spark-41](./image/spark-41.png) 
+  - producer:消息生产者
+  - consumer：消息消费者
+  - broker:kafka集群的server,负责处理消息读、写请求，存储消息
+    - 没有主从关系
+    - 依赖zookeeper进行协调
+    - 负责消息的读，写和存储
+    - 可以管理多个partition
+  - topic:消息队列/分类
+    - 一类消息的总称。 
+    - 不同类消息会分别存储
+    - 每个topic由多个partition组成。在创建topic时可以指定
+      - partition:组成topic的单元，直接接触内存
+
+
+- 消息存储模型
+  > ![spark-42](./image/spark-42.png) 
+  - 总括：
+    ```
+    kafka里面的消息是有topic来组织的，简单的我们可以想象为一个队列，一个队列
+    就是一个topic,然后它把每个topic又分为很多个partition,这个是为了做并行的
+    ,在每个partition里面是有序的，相当于有序的队列，其中每个消息都有个序号，
+    比如0到12,从前面读往后面写。
+
+    一个partition对应一个broker,一个broker可以管多个partition,比如说，topic
+    有6个partition,有两个broker,那每个broker就管3个partition。
+
+    这个partition可以很简单想象为一个文件，当数据发过来的时候它就往这个
+    partition上面append,追加就行，kafka和很多消息系统不一样，很多消息系统
+    是消费完了我就把它删掉，而kafka是根据时间策略删除，而不是消费完就删除，
+    在kafka里面没有一个消费完这么个概念，只有过期这样一个概念
+    ```
+  - 细节说明：
+    - 一个topic分成多个partition
+    - 每个partition内部消息**强有序**，严格按照FIFO；写消息时，其中的每个消息都有一个序号叫**offset**
+      - 但是topic不是FIFO的
+    - 消费时，每一个consumer对应一个partition，可以并行消费
+    - **一个partition只对应一个broker**,**一个broker可以管多个partition**
+    - 消息直接写入文件，并不是存储在内存中
+    - 根据时间策略（默认一周）删除，而不是消费完就删除
+    - producer自己决定往哪个partition写消息，
+      > 一般key不为null时，使用hash。为null时，使用轮询
+      - 可以是轮询的负载均衡，
+        - 先随机到一个partition上，写一段时间后
+        - 再随机到一个partition上
+      - 或者是基于hash的partition策略。
+    - Partition可以设置副本，是在创建Topic的时候设置
+
+- 消费模型：
+  - 图解：
+    > ![spark-43](./image/spark-43.png) 
+    - 集群中画出的是一个topic的四个分区(这里为了说明就画一个topic)
+  - 说明：
+    - consumer自己维护消费到哪个offset
+      - 0.8及之前：维护到zookeeper
+      - 0.9及之后：维护道kafka集群
+    - 每个consumer都有对应的group
+    - group内是queue消费模型
+      - 各个consumer消费不同的partition
+      - 一个消息在group内只消费一次
+        - 比如c1读P0读到了50，断了
+        - c2此时可以读p0，但是只能从50开读
+        - 另外如果总共有4个分区，那么一个group中最多要有4个Consumer，否则第5个Consumer也没办法消费(都被占用了)
+    - 各个group各自独立消费，互不影响
+
+- 特点总结：
+  - 消息系统的特点：
+    - 生存者消费者模型，FIFO
+    - partition内部是FIFO的，partition之间呢不是FIFO的，当然我们可以把topic设为一个partition,这样就是严格的FIFO
+  - 高性能：单节点支持上千个客户端，百MB/s吞吐
+  - 持久性：消息直接持久化在普通磁盘上且性能好
+    ```
+    直接写到磁盘里面去，就是直接append到磁盘里面去，这样的好处是
+    直接持久话，数据不会丢，第二个好处是顺序写，然后消费数据也是
+    顺序的读，所以持久化的同时还能保证顺序读写
+    ```
+  - 分布式：数据副本元余、流量负载均衡、可扩展
+    ```
+  分布式，数据副本，也就是同一份数据可以到不同的broker上面去，
+  也就是当一份数据，磁盘坏掉的时候，数据不会丢失，比如3个副本，
+  就是在3个机器磁盘都坏掉的情况下数据才会丢。
+    ```
+  - 灵活：消息长时间持久化+Client维护消费状态
+    ```
+    消费方式非常灵活，第一原因是消息持久化时间跨度比较长，一天或
+    者一星期等，第二消费状态自己维护消费到哪个地方了，可以自定义
+    消费偏移量
+    ```
+
+## 与其他消息队列对比
+
+## 堆外内存，零拷贝
+
+![spark-44](./image/spark-44.png)
+
+---
+
+![spark-45](./image/spark-45.png)
+
+
+## 集群搭建
+
+
+## SparkStreaming-Kafuka
+
+### Reciver模式
+
+### Direct模式
+
+#### 说明
+
+#### api
+
+```scala
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.dstream.{DStream, InputDStream}
+import org.apache.spark.streaming.kafka010.{CanCommitOffsets, HasOffsetRanges, KafkaUtils, OffsetRange}
+import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
+import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
+import org.apache.spark.streaming.{Durations, StreamingContext}
+
+/**
+  * SparkStreaming2.3版本 读取kafka 中数据 ：
+  *  1.采用了新的消费者api实现，类似于1.6中SparkStreaming 读取 kafka Direct模式。并行度 一样。
+  *  2.因为采用了新的消费者api实现，所有相对于1.6的Direct模式【simple api实现】 ，api使用上有很大差别。未来这种api有可能继续变化
+  *  3.kafka中有两个参数：
+  *      heartbeat.interval.ms：这个值代表 kafka集群与消费者之间的心跳间隔时间，kafka 集群确保消费者保持连接的心跳通信时间间隔。这个时间默认是3s.
+  *             这个值必须设置的比session.timeout.ms appropriately 小，一般设置不大于 session.timeout.ms appropriately 的1/3
+  *      session.timeout.ms appropriately：
+  *             这个值代表消费者与kafka之间的session 会话超时时间，如果在这个时间内，kafka 没有接收到消费者的心跳【heartbeat.interval.ms 控制】，
+  *             那么kafka将移除当前的消费者。这个时间默认是10s。
+  *             这个时间位于配置 group.min.session.timeout.ms【6s】 和 group.max.session.timeout.ms【300s】之间的一个参数,如果SparkSteaming 批次间隔时间大于5分钟，
+  *             也就是大于300s,那么就要相应的调大group.max.session.timeout.ms 这个值。
+  *  4.大多数情况下，SparkStreaming读取数据使用 LocationStrategies.PreferConsistent 这种策略，这种策略会将分区均匀的分布在集群的Executor之间。
+  *    如果Executor在kafka 集群中的某些节点上，可以使用 LocationStrategies.PreferBrokers 这种策略，那么当前这个Executor 中的数据会来自当前broker节点。
+  *    如果节点之间的分区有明显的分布不均，可以使用 LocationStrategies.PreferFixed 这种策略,可以通过一个map 指定将topic分区分布在哪些节点中。
+  *
+  *  5.新的消费者api 可以将kafka 中的消息预读取到缓存区中，默认大小为64k。默认缓存区在 Executor 中，加快处理数据速度。
+  *     可以通过参数 spark.streaming.kafka.consumer.cache.maxCapacity 来增大，也可以通过spark.streaming.kafka.consumer.cache.enabled 设置成false 关闭缓存机制。
+  *
+  *  6.关于消费者offset
+  *    1).如果设置了checkpoint ,那么offset 将会存储在checkpoint中。
+  *     这种有缺点: 第一，当从checkpoint中恢复数据时，有可能造成重复的消费，需要我们写代码来保证数据的输出幂等。
+  *                第二，当代码逻辑改变时，无法从checkpoint中来恢复offset.
+  *    2).依靠kafka 来存储消费者offset,kafka 中有一个特殊的topic 来存储消费者offset。新的消费者api中，会定期自动提交offset。这种情况有可能也不是我们想要的，
+  *       因为有可能消费者自动提交了offset,但是后期SparkStreaming 没有将接收来的数据及时处理保存。这里也就是为什么会在配置中将enable.auto.commit 设置成false的原因。
+  *       这种消费模式也称最多消费一次，默认sparkStreaming 拉取到数据之后就可以更新offset,无论是否消费成功。自动提交offset的频率由参数auto.commit.interval.ms 决定，默认5s。
+  *       如果我们能保证完全处理完业务之后，可以后期异步的手动提交消费者offset.
+  *
+  *    3).自己存储offset,这样在处理逻辑时，保证数据处理的事务，如果处理数据失败，就不保存offset，处理数据成功则保存offset.这样可以做到精准的处理一次处理数据。
+  *
+  */
+object SparkStreamingOnKafkaDirect {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.setMaster("local")
+    conf.setAppName("SparkStreamingOnKafkaDirect")
+    val ssc = new StreamingContext(conf,Durations.seconds(5))
+    //设置日志级别
+    ssc.sparkContext.setLogLevel("Error")
+
+    val kafkaParams = Map[String, Object](
+      "bootstrap.servers" -> "node1:9092,node2:9092,node3:9092",
+      "key.deserializer" -> classOf[StringDeserializer],
+      "value.deserializer" -> classOf[StringDeserializer],
+      "group.id" -> "MyGroupId",//
+
+      /**
+        * 当没有初始的offset，或者当前的offset不存在，如何处理数据
+        *  earliest ：自动重置偏移量为最小偏移量
+        *  latest：自动重置偏移量为最大偏移量【默认】
+        *  none:没有找到以前的offset,抛出异常
+        */
+      "auto.offset.reset" -> "earliest",
+
+      /**
+        * 当设置 enable.auto.commit为false时，不会自动向kafka中保存消费者offset.需要异步的处理完数据之后手动提交
+        */
+      "enable.auto.commit" -> (false: java.lang.Boolean)//默认是true
+    )
+
+    val topics = Array("testtopic")
+
+    // 注意：一定要用源头这个！！！
+    val stream: InputDStream[ConsumerRecord[String, String]] = KafkaUtils.createDirectStream[String, String](
+      ssc,
+      PreferConsistent,//
+      Subscribe[String, String](topics, kafkaParams)
+    )
+
+    val transStrem: DStream[String] = stream.map(record => {
+      val key_value = (record.key, record.value)
+      println("receive message key = "+key_value._1)
+      println("receive message value = "+key_value._2)
+      key_value._2
+    })
+    val wordsDS: DStream[String] = transStrem.flatMap(line=>{line.split(" ")})
+    val result: DStream[(String, Int)] = wordsDS.map((_,1)).reduceByKey(_+_)
+    result.print()
+
+    /**
+      * 以上业务处理完成之后，异步的提交消费者offset,这里将 enable.auto.commit 设置成false,就是使用kafka 自己来管理消费者offset
+      * 注意这里，获取 offsetRanges: Array[OffsetRange] 每一批次topic 中的offset时，必须从 源头读取过来的 stream中获取，不能从经过stream转换之后的DStream中获取。
+      */
+    stream.foreachRDD { rdd =>
+      val offsetRanges: Array[OffsetRange] = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+      // some time later, after outputs have completed
+      stream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
+    }
+    ssc.start()
+    ssc.awaitTermination()
+    ssc.stop()
+  }
+}
+
+```
+
+#### 手动维护offset
+
+
+
+
 
