@@ -846,19 +846,19 @@
 
 ### 1.11.2. 计算模式
 
-#### stage划分
+#### 1.11.2.1. stage划分
 
 ![spark-35](./image/spark-35.png)
 
 - 遇见宽依赖就划一刀
 
-#### RDD不存储数据
+#### 1.11.2.2. RDD不存储数据
 
 ![spark-36](./image/spark-36.png)
 
 - RDD中放的是具体的处理逻辑
 
-#### 数据处理模式
+#### 1.11.2.3. 数据处理模式
 
 - 管道处理模式
   - 不是把每一步把全部数据处理完后，放到内存中，再进行下一步的处理
@@ -1003,11 +1003,11 @@
 
 # 3. Spark Streaming
 
-## 基础
+## 3.1. 基础
 
-### 说明
+### 3.1.1. 说明
 
-### WordCount
+### 3.1.2. WordCount
 
 ```scala
 /**
@@ -1064,9 +1064,9 @@ object WordCountFromSocket {
 }
 ```
 
-## 算子
+## 3.2. 算子
 
-### UpdataStateByKey
+### 3.2.1. UpdataStateByKey
 
 ```scala
 /**
@@ -1125,7 +1125,7 @@ object UpdateStateByKey {
 
 ```
 
-### WindowOperation
+### 3.2.2. WindowOperation
 
 ```scala
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
@@ -1187,7 +1187,7 @@ object WindowOperator {
 }
 ```
 
-### Transformation
+### 3.2.3. Transformation
 
 ```scala
 object TransformBlackList {
@@ -1232,7 +1232,7 @@ object TransformBlackList {
 }
 ```
 
-### saveAsTextFile
+### 3.2.4. saveAsTextFile
 
 ```scala
 /**
@@ -1276,7 +1276,7 @@ object SaveAsTextFile {
 
 # 4. Kafuka
 
-## 说明
+## 4.1. 说明
 
 - 优点：
   - 分布式
@@ -1296,7 +1296,7 @@ object SaveAsTextFile {
     - 一个请求队列
     - 一个结果响应队列
 
-## 架构
+## 4.2. 架构
 
 - 整体：
   - 生产者消费者模式
@@ -1396,9 +1396,9 @@ object SaveAsTextFile {
     消费偏移量
     ```
 
-## 与其他消息队列对比
+## 4.3. 与其他消息队列对比
 
-## 堆外内存，零拷贝
+## 4.4. 堆外内存，零拷贝
 
 ![spark-44](./image/spark-44.png)
 
@@ -1407,18 +1407,18 @@ object SaveAsTextFile {
 ![spark-45](./image/spark-45.png)
 
 
-## 集群搭建
+## 4.5. 集群搭建
 
 
-## SparkStreaming-Kafuka
+## 4.6. SparkStreaming-Kafuka
 
-### Reciver模式
+### 4.6.1. Reciver模式
 
-### Direct模式
+### 4.6.2. Direct模式
 
-#### 说明
+#### 4.6.2.1. 说明
 
-#### api
+#### 4.6.2.2. api
 
 ```scala
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -1526,7 +1526,7 @@ object SparkStreamingOnKafkaDirect {
 
 ```
 
-#### 手动维护offset
+#### 4.6.2.3. 手动维护offset
 
 
 

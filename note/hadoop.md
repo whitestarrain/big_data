@@ -2488,8 +2488,8 @@ hdfs 用来保存数据库中表的信息，以文本数据形式存储。
 
 |          | NN-1 | NN-2 | DN  | ZK  | ZKFC | JNN | RM  | NM  | mysql | mate store | hive |
 | :------: | :--: | :--: | :-: | :-: | :--: | :-: | :-: | :-: | :---: | :--------: | :--: |
-| Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |  \*   |            |      |
-| Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |       |            |      |
+| Node0001 |  \*  |      |     |     |  \*  | \*  |     |     |       |            |      |
+| Node0002 |      |  \*  | \*  | \*  |  \*  | \*  |     | \*  |  \*   |            |      |
 | Node0003 |      |      | \*  | \*  |      | \*  | \*  | \*  |       |     \*     |      |
 | Node0004 |      |      | \*  | \*  |      |     | \*  | \*  |       |            |  \*  |
 
@@ -4325,7 +4325,7 @@ Just as Bigtable leverages the distributed data storage provided by the Google F
 - 创建 backup-masters。HBase 的备机
   - 在 node0001 启动，node0004 作为备
   ```
-  node4
+  node0004
   ```
 - 拷贝 hdfs-site.xml 到 hbase/conf
 - 把 hbase 分发到其他所有节点
